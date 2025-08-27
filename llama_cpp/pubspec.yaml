@@ -1,0 +1,28 @@
+# pubspec.yaml
+name: local_chatbot
+description: A local offline chatbot using llama.cpp and Flutter.
+version: 1.0.0+1
+
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  llama_cpp_dart: ^0.1.0
+  file_picker: ^10.3.1
+  shared_preferences: ^2.5.3
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  google_fonts: ^6.1.0
+  http: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

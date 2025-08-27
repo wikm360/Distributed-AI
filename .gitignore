@@ -1,0 +1,63 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+############################
+# Flutter/Dart/Pub related #
+############################
+
+# mediapipe project
+mediapipe/**/doc/api/
+mediapipe/**/ios/Flutter/.last_build_id
+mediapipe/.dart_tool/
+mediapipe/.flutter-plugins
+mediapipe/.flutter-plugins-dependencies
+mediapipe/.pub-cache/
+mediapipe/.pub/
+mediapipe/build/
+
+mediapipe/app.*.symbols
+mediapipe/app.*.map.json
+
+mediapipe/android/app/debug
+mediapipe/android/app/profile
+mediapipe/android/app/release
+
+# llama_cpp project
+llama_cpp/**/doc/api/
+llama_cpp/**/ios/Flutter/.last_build_id
+llama_cpp/.dart_tool/
+llama_cpp/.flutter-plugins
+llama_cpp/.flutter-plugins-dependencies
+llama_cpp/.pub-cache/
+llama_cpp/.pub/
+llama_cpp/build/
+
+llama_cpp/app.*.symbols
+llama_cpp/app.*.map.json
+
+llama_cpp/android/app/debug
+llama_cpp/android/app/profile
+llama_cpp/android/app/release
+

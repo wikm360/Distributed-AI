@@ -1,0 +1,46 @@
+name: distributed_ai_chat
+description: "Distributed AI Chat using Flutter Gemma"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Flutter Gemma for Edge AI
+  flutter_gemma: ^0.10.4
+  
+  # Core dependencies
+  http: ^1.5.0
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
+  
+  # File operations
+  file_picker: ^10.3.2
+  
+  # UI enhancements
+  flutter_markdown: ^0.7.7+1
+  
+  # Utils
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Add assets if you have local models or images
+  assets:
+    - assets/
+
+flutter_gemma:
+  # Configuration for Flutter Gemma plugin
+  # This will be automatically configured by the plugin

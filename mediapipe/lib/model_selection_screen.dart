@@ -304,6 +304,7 @@ class ModelCard extends StatefulWidget {
 
 class _ModelCardState extends State<ModelCard> {
   late PreferredBackend selectedBackend;
+  bool _isChecking = false;
   
   @override
   void initState() {
@@ -314,6 +315,44 @@ class _ModelCardState extends State<ModelCard> {
   // Check if model supports both backends
   bool get supportsBothBackends {
     return !widget.model.localModel;
+  }
+
+  Future<void> _onModelTap() async {
+    setState(() {
+      _isChecking = true;
+    });
+
+    try {
+      if (!kIsWeb) {
+        // For non-web platforms, navigate to download screen
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => ModelDownloadScreen(
+              model: widget.model,
+              selectedBackend: selectedBackend,
+            ),
+          ),
+        );
+      } else {
+        // For web, navigate directly to chat
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => ChatScreen(
+              model: widget.model,
+              selectedBackend: selectedBackend,
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+        });
+      }
+    }
   }
   
   @override
@@ -361,7 +400,7 @@ class _ModelCardState extends State<ModelCard> {
                           ),
                         ],
                         selected: {selectedBackend},
-                        onSelectionChanged: (Set<PreferredBackend> selection) {
+                        onSelectionChanged: _isChecking ? null : (Set<PreferredBackend> selection) {
                           setState(() {
                             selectedBackend = selection.first;
                           });
@@ -420,34 +459,20 @@ class _ModelCardState extends State<ModelCard> {
                 ],
               ],
             ),
-            trailing: Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.grey[400],
-            ),
-            onTap: () {
-              // Navigate to download screen (non-web) or chat screen (web)
-              if (!kIsWeb) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => ModelDownloadScreen(
-                      model: widget.model,
-                      selectedBackend: selectedBackend,
+            trailing: _isChecking 
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                     ),
+                  )
+                : Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.grey[400],
                   ),
-                );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => ChatScreen(
-                      model: widget.model,
-                      selectedBackend: selectedBackend,
-                    ),
-                  ),
-                );
-              }
-            },
+            onTap: _isChecking ? null : _onModelTap,
           ),
         ],
       ),

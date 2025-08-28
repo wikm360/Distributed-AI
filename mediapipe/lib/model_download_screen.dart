@@ -26,7 +26,13 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
   bool needToDownload = true;
   double _progress = 0.0;
   String _token = '';
+  String _status = '';
   final TextEditingController _tokenController = TextEditingController();
+  
+  // Download control states
+  bool _isDownloading = false;
+  bool _isPaused = false;
+  bool _canResume = false;
 
   @override
   void initState() {
@@ -39,64 +45,245 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
     _initialize();
   }
 
+  @override
+  void dispose() {
+    _downloadService.dispose();
+    _tokenController.dispose();
+    super.dispose();
+  }
+
   Future<void> _initialize() async {
     _token = await _downloadService.loadToken() ?? '';
     _tokenController.text = _token;
     needToDownload = !(await _downloadService.checkModelExistence(_token));
-    setState(() {});
+    setState(() {
+      _status = needToDownload ? 'آماده برای دانلود' : 'مدل موجود است';
+    });
   }
 
   Future<void> _saveToken(String token) async {
     await _downloadService.saveToken(token);
     await _initialize();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('توکن با موفقیت ذخیره شد!')),
+      );
+    }
   }
 
-  Future<void> _downloadModel() async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
+  Future<void> _startDownload() async {
     if (widget.model.needsAuth && _token.isEmpty) {
-      scaffoldMessenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('لطفاً ابتدا توکن خود را وارد کنید.')),
       );
       return;
     }
 
+    setState(() {
+      _isDownloading = true;
+      _isPaused = false;
+      _canResume = false;
+    });
+
     try {
       await _downloadService.downloadModel(
         token: widget.model.needsAuth ? _token : '',
         onProgress: (progress) {
-          setState(() {
-            _progress = progress;
-          });
+          if (mounted) {
+            setState(() {
+              _progress = progress;
+            });
+          }
+        },
+        onStatus: (status) {
+          if (mounted) {
+            setState(() {
+              _status = status;
+            });
+          }
         },
       );
-      setState(() {
-        needToDownload = false;
-      });
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('مدل با موفقیت دانلود شد!')),
-      );
-    } catch (e) {
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('خطا در دانلود مدل.')),
-      );
-    } finally {
+
       if (mounted) {
         setState(() {
+          needToDownload = false;
+          _isDownloading = false;
           _progress = 0.0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('مدل با موفقیت دانلود شد!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _canResume = true;
+          _status = 'خطا در دانلود: ${e.toString()}';
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در دانلود: ${e.toString()}'),
+            action: SnackBarAction(
+              label: 'تلاش مجدد',
+              onPressed: _startDownload,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pauseDownload() async {
+    try {
+      await _downloadService.pauseDownload();
+      setState(() {
+        _isPaused = true;
+        _canResume = true;
+        _status = 'دانلود متوقف شد';
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _status = 'خطا در توقف: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  Future<void> _resumeDownload() async {
+    setState(() {
+      _isPaused = false;
+      _canResume = false;
+      _isDownloading = true;
+      _status = 'در حال از سرگیری...';
+    });
+
+    try {
+      await _downloadService.resumeDownload(
+        token: widget.model.needsAuth ? _token : '',
+        onProgress: (progress) {
+          if (mounted) {
+            setState(() {
+              _progress = progress;
+            });
+          }
+        },
+        onStatus: (status) {
+          if (mounted) {
+            setState(() {
+              _status = status;
+            });
+          }
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          needToDownload = false;
+          _isDownloading = false;
+          _progress = 0.0;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _canResume = true;
+          _status = 'خطا در ادامه دانلود: ${e.toString()}';
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در ادامه دانلود: ${e.toString()}'),
+            action: SnackBarAction(
+              label: 'تلاش مجدد',
+              onPressed: _startDownload,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopDownload() async {
+    try {
+      setState(() {
+        _status = 'در حال لغو دانلود...';
+      });
+      
+      await _downloadService.stopDownload();
+      
+      // Wait a bit for cleanup
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _isPaused = false;
+          _canResume = false;
+          _progress = 0.0;
+          _status = 'دانلود لغو شد';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _isPaused = false;
+          _canResume = false;
+          _progress = 0.0;
+          _status = 'خطا در لغو: ${e.toString()}';
         });
       }
     }
   }
 
   Future<void> _deleteModel() async {
-    await _downloadService.deleteModel();
-    setState(() {
-      needToDownload = true;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('مدل حذف شد.')),
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[850],
+        title: const Text('تایید حذف', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'آیا مطمئن هستید که می‌خواهید این مدل را حذف کنید؟',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('لغو', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
+
+    if (confirmed == true) {
+      try {
+        await _downloadService.deleteModel();
+        setState(() {
+          needToDownload = true;
+          _status = 'مدل حذف شد';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('مدل حذف شد.')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطا در حذف: ${e.toString()}')),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -164,6 +351,28 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
               ),
             ),
 
+            // Status indicator
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _getStatusColor().withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _getStatusColor()),
+              ),
+              child: Row(
+                children: [
+                  Icon(_getStatusIcon(), color: _getStatusColor()),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _status,
+                      style: TextStyle(color: _getStatusColor(), fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // Token input (if needed)
             if (widget.model.needsAuth) ...[
               TextField(
@@ -195,13 +404,6 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
                       final token = _tokenController.text.trim();
                       if (token.isNotEmpty) {
                         await _saveToken(token);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('توکن با موفقیت ذخیره شد!'),
-                            ),
-                          );
-                        }
                       }
                     },
                   ),
@@ -257,51 +459,103 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
 
             const Spacer(),
 
-            // Download section
-            Center(
-              child: _progress > 0.0
-                  ? Column(
-                      children: [
-                        Text(
-                          'پیشرفت دانلود: ${_progress.toStringAsFixed(1)}%',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        const SizedBox(height: 8),
-                        LinearProgressIndicator(
-                          value: _progress / 100.0,
-                          backgroundColor: Colors.grey[700],
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                        ),
-                      ],
-                    )
-                  : SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: !needToDownload ? _deleteModel : _downloadModel,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: !needToDownload ? Colors.red : Colors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          !needToDownload ? 'حذف مدل' : 'دانلود مدل',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+            // Download progress section
+            if (_isDownloading || _progress > 0) ...[
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'پیشرفت دانلود: ${_progress.toStringAsFixed(1)}%',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                       ),
-                    ),
-            ),
-
-            // Chat button
-            if (!needToDownload)
+                      Text(
+                        '${(() {
+                          final sizeStr = widget.model.size.replaceAll(RegExp(r'[^0-9.]'), '');
+                          final sizeNum = sizeStr.isEmpty ? 1.0 : double.tryParse(sizeStr) ?? 1.0;
+                          return (sizeNum * _progress / 100).toStringAsFixed(1);
+                        })()}GB / ${widget.model.size}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: _progress / 100.0,
+                    backgroundColor: Colors.grey[700],
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (_isDownloading && !_isPaused)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _pauseDownload,
+                            icon: const Icon(Icons.pause),
+                            label: const Text('توقف'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      if (_isPaused || _canResume) ...[
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _resumeDownload,
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('ادامه'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (_isDownloading || _canResume)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _stopDownload,
+                            icon: const Icon(Icons.stop),
+                            label: const Text('لغو'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ] else ...[
+              // Download/Delete buttons when not downloading
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
+                  onPressed: needToDownload ? _startDownload : _deleteModel,
+                  icon: Icon(needToDownload ? Icons.download : Icons.delete),
+                  label: Text(needToDownload ? 'شروع دانلود' : 'حذف مدل'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: needToDownload ? Colors.blue : Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
+            // Chat button
+            if (!needToDownload && !_isDownloading)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
@@ -313,19 +567,14 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
                       ),
                     );
                   },
+                  icon: const Icon(Icons.chat),
+                  label: const Text('استفاده از مدل در چت'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'استفاده از مدل در چت',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -365,5 +614,31 @@ class _ModelDownloadScreenState extends State<ModelDownloadScreen> {
         ],
       ),
     );
+  }
+
+  Color _getStatusColor() {
+    if (_status.contains('خطا') || _status.contains('لغو')) {
+      return Colors.red;
+    } else if (_status.contains('تکمیل') || _status.contains('موجود')) {
+      return Colors.green;
+    } else if (_status.contains('متوقف') || _status.contains('توقف')) {
+      return Colors.orange;
+    } else {
+      return Colors.blue;
+    }
+  }
+
+  IconData _getStatusIcon() {
+    if (_status.contains('خطا')) {
+      return Icons.error;
+    } else if (_status.contains('تکمیل') || _status.contains('موجود')) {
+      return Icons.check_circle;
+    } else if (_status.contains('متوقف')) {
+      return Icons.pause_circle;
+    } else if (_status.contains('لغو')) {
+      return Icons.cancel;
+    } else {
+      return Icons.info;
+    }
   }
 }

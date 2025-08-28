@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'models/model.dart';
 import 'loading_widget.dart';
+import 'model_selection_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -26,6 +27,7 @@ class ChatScreen extends StatefulWidget {
 
 class ChatScreenState extends State<ChatScreen> {
   final _gemma = FlutterGemmaPlugin.instance;
+  InferenceModel? _inferenceModel;
   InferenceChat? chat;
   final _messages = <Message>[];
   bool _isModelInitialized = false;
@@ -40,6 +42,9 @@ class ChatScreenState extends State<ChatScreen> {
   // UI controller
   final TextEditingController _controller = TextEditingController();
 
+  // Generation control
+  StreamSubscription<ModelResponse>? _generationSubscription;
+  
   @override
   void initState() {
     super.initState();
@@ -50,8 +55,9 @@ class ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _workerTimer?.cancel();
+    _generationSubscription?.cancel();
     _controller.dispose();
-    _gemma.modelManager.deleteModel();
+    _inferenceModel?.close();
     super.dispose();
   }
 
@@ -64,7 +70,7 @@ class ChatScreenState extends State<ChatScreen> {
         await _gemma.modelManager.setModelPath(path);
       }
 
-      final model = await _gemma.createModel(
+      _inferenceModel = await _gemma.createModel(
         modelType: widget.model.modelType,
         preferredBackend: widget.selectedBackend ?? widget.model.preferredBackend,
         maxTokens: widget.model.maxTokens,
@@ -72,7 +78,7 @@ class ChatScreenState extends State<ChatScreen> {
         maxNumImages: widget.model.maxNumImages ?? 1,
       );
 
-      chat = await model.createChat(
+      chat = await _inferenceModel!.createChat(
         temperature: widget.model.temperature,
         randomSeed: 1,
         topK: widget.model.topK,
@@ -101,7 +107,7 @@ class ChatScreenState extends State<ChatScreen> {
   // Background worker - checks for distributed queries
   void _startBackgroundWorker() {
     _workerTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      if (!mounted) return;
+      if (!mounted || _isStreaming) return; // Don't process background tasks while user is chatting
 
       try {
         final response = await http.get(Uri.parse('$routingServerUrl/request'));
@@ -138,9 +144,11 @@ class ChatScreenState extends State<ChatScreen> {
 
   // Generate response using Flutter Gemma for distributed queries
   Future<String> _generateDistributedResponse(String query) async {
+    if (chat == null) return "Model not initialized";
+    
     try {
       final tempMessage = Message.text(text: query, isUser: true);
-      await chat!.addQuery(tempMessage);
+      await chat!.addQueryChunk(tempMessage);
 
       final StringBuffer buffer = StringBuffer();
       
@@ -179,10 +187,210 @@ class ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  // Restart app by going back to model selection
+  Future<void> _restartApp() async {
+    try {
+      print("[User] 🔄 Restarting app...");
+      
+      // Stop any ongoing processes
+      await _stopGeneration();
+      _workerTimer?.cancel();
+      _generationSubscription?.cancel();
+      
+      // Close the model
+      if (_inferenceModel != null) {
+        await _inferenceModel!.close();
+      }
+      
+      // Navigate back to model selection and clear all previous routes
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const ModelSelectionScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print("[User] ❌ Error restarting app: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا در راه‌اندازی مجدد: $e')),
+        );
+      }
+    }
+  }
+
+  // Clear chat history and reset session
+  Future<void> _clearChatHistory() async {
+    try {
+      print("[User] 🧹 Starting complete chat reset...");
+      
+      // Stop any ongoing generation first
+      if (_isStreaming) {
+        await _stopGeneration();
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+
+      // Clear UI messages first
+      setState(() {
+        _messages.clear();
+        _error = null;
+      });
+
+      // Close existing chat session completely
+      if (chat != null) {
+        try {
+          // Note: Flutter Gemma might not have a direct close method for chat
+          // but we'll nullify it to force recreation
+          chat = null;
+          print("[User] 🗑️ Existing chat session nullified");
+        } catch (e) {
+          print("[User] ⚠️ Warning closing existing chat: $e");
+        }
+      }
+
+      // Wait a bit to ensure cleanup
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Force recreate the entire inference model if needed
+      if (_inferenceModel != null) {
+        try {
+          await _inferenceModel!.close();
+          print("[User] 🔄 Inference model closed");
+        } catch (e) {
+          print("[User] ⚠️ Warning closing inference model: $e");
+        }
+      }
+
+      // Recreate inference model
+      _inferenceModel = await _gemma.createModel(
+        modelType: widget.model.modelType,
+        preferredBackend: widget.selectedBackend ?? widget.model.preferredBackend,
+        maxTokens: widget.model.maxTokens,
+        supportImage: widget.model.supportImage,
+        maxNumImages: widget.model.maxNumImages ?? 1,
+      );
+
+      // Create completely fresh chat session
+      chat = await _inferenceModel!.createChat(
+        temperature: widget.model.temperature,
+        randomSeed: DateTime.now().millisecondsSinceEpoch, // Use different seed for fresh start
+        topK: widget.model.topK,
+        topP: widget.model.topP,
+        tokenBuffer: 256,
+        supportImage: widget.model.supportImage,
+        supportsFunctionCalls: widget.model.supportsFunctionCalls,
+        tools: [],
+        isThinking: widget.model.isThinking,
+        modelType: widget.model.modelType,
+      );
+      
+      print("[User] ✅ Complete fresh chat session created successfully");
+      
+      // Show confirmation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('چت جدید شروع شد - تاریخچه پاک شد'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("[User] ❌ Error in complete chat reset: $e");
+      if (mounted) {
+        setState(() {
+          _error = "خطا در شروع چت جدید: $e";
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در ریست چت: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Stop current generation
+  Future<void> _stopGeneration() async {
+    if (_generationSubscription != null) {
+      print("[User] 🛑 Stopping generation...");
+      
+      await _generationSubscription!.cancel();
+      _generationSubscription = null;
+      
+      setState(() {
+        _isStreaming = false;
+        // Add a system message indicating generation was stopped
+        if (_messages.isNotEmpty && !_messages.last.isUser) {
+          _messages.last = Message.text(
+            text: "${_messages.last.text}\n\n[تولید متوقف شد]", 
+            isUser: false
+          );
+        }
+      });
+      
+      // IMPORTANT: Reset the chat session to ensure it's ready for next query
+      try {
+        if (_inferenceModel != null) {
+          print("[User] 🔄 Recreating chat session after stop...");
+          
+          // Create a new chat session
+          chat = await _inferenceModel!.createChat(
+            temperature: widget.model.temperature,
+            randomSeed: 1,
+            topK: widget.model.topK,
+            topP: widget.model.topP,
+            tokenBuffer: 256,
+            supportImage: widget.model.supportImage,
+            supportsFunctionCalls: widget.model.supportsFunctionCalls,
+            tools: [],
+            isThinking: widget.model.isThinking,
+            modelType: widget.model.modelType,
+          );
+          
+          // Re-add conversation history to new session
+          for (int i = 0; i < _messages.length - 1; i++) { // -1 to skip the incomplete last message
+            final message = _messages[i];
+            if (message.text.isNotEmpty && !message.text.contains('[تولید متوقف شد]')) {
+              await chat!.addQueryChunk(message);
+            }
+          }
+          
+          print("[User] ✅ Chat session recreated successfully");
+        }
+      } catch (e) {
+        print("[User] ❌ Error recreating chat session: $e");
+        // If recreation fails, we'll still allow new messages but without history
+      }
+      
+      print("[User] ⏹️ Generation stopped by user");
+    }
+  }
+
   // User sends message
   void _sendMessage(String text) async {
     final input = text.trim();
-    if (input.isEmpty || _isStreaming || chat == null) return;
+    if (input.isEmpty || chat == null) return;
+
+    // Stop any ongoing generation first
+    if (_isStreaming) {
+      await _stopGeneration();
+      // Allow a brief moment for cleanup
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    // Verify chat session is ready
+    if (chat == null) {
+      print("[User] ❌ Chat session is null, cannot send message");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('خطا: جلسه چت معتبر نیست. لطفاً برنامه را مجدداً راه‌اندازی کنید.')),
+      );
+      return;
+    }
 
     setState(() {
       _messages.add(Message.text(text: input, isUser: true));
@@ -190,6 +398,8 @@ class ChatScreenState extends State<ChatScreen> {
       _messages.add(Message.text(text: "", isUser: false));
     });
     _controller.clear();
+
+    print("[User] 📤 Sending message: $input");
 
     try {
       // Try distributed approach first
@@ -202,39 +412,175 @@ class ChatScreenState extends State<ChatScreen> {
         final workerResponses = await _waitForWorkerResponses(queryNumber);
         print("[User] 📥 ${workerResponses.length} پاسخ از دیگر نودها دریافت شد");
 
-        // Combine responses and generate final answer
-        final finalResponse = await _generateFinalResponse(input, workerResponses);
-        
-        setState(() {
-          _messages.last = Message.text(text: finalResponse, isUser: false);
-          _isStreaming = false;
-        });
-
+        // Generate final response combining worker responses
+        await _generateFinalResponse(input, workerResponses);
         await _cleanupQuery(queryNumber);
       } else {
         // Fallback to local mode
         print("[User] 🌐 سرور در دسترس نیست، حالت آفلاین فعال شد...");
-        
-        await chat!.addQuery(Message.text(text: input, isUser: true));
-        
-        final StringBuffer buffer = StringBuffer();
-        await for (final response in chat!.generateChatResponseAsync()) {
-          if (response is TextResponse) {
-            buffer.write(response.token);
-            setState(() {
-              _messages.last = Message.text(text: buffer.toString(), isUser: false);
-            });
-          }
-        }
-        
-        setState(() {
-          _isStreaming = false;
-        });
+        await _generateLocalResponse(input);
       }
     } catch (e) {
       print("[User] ❌ خطای کلی: $e");
       setState(() {
-        _messages.last = Message.text(text: "Error: $e", isUser: false);
+        if (_messages.isNotEmpty && !_messages.last.isUser) {
+          _messages.last = Message.text(text: "خطا: $e", isUser: false);
+        }
+        _isStreaming = false;
+      });
+    }
+  }
+
+  // Generate local response with streaming and better error handling
+  Future<void> _generateLocalResponse(String input) async {
+    try {
+      print("[User] 🤖 Starting local generation for: $input");
+      
+      // Ensure we have a fresh message in chat
+      await chat!.addQueryChunk(Message.text(text: input, isUser: true));
+      
+      final StringBuffer buffer = StringBuffer();
+      bool hasStartedGeneration = false;
+      
+      _generationSubscription = chat!.generateChatResponseAsync().listen(
+        (response) {
+          if (!mounted || !_isStreaming) {
+            print("[User] 🚫 Ignoring response - not mounted or streaming stopped");
+            return;
+          }
+          
+          if (response is TextResponse) {
+            hasStartedGeneration = true;
+            buffer.write(response.token);
+            setState(() {
+              _messages.last = Message.text(text: buffer.toString(), isUser: false);
+            });
+            print("[User] 📝 Token received: ${response.token}");
+          } else {
+            print("[User] 🔍 Non-text response: ${response.runtimeType}");
+          }
+        },
+        onDone: () {
+          print("[User] ✅ Local generation completed");
+          if (mounted) {
+            setState(() {
+              _isStreaming = false;
+            });
+          }
+          _generationSubscription = null;
+        },
+        onError: (error) {
+          print("[User] ❌ Local generation error: $error");
+          if (mounted) {
+            setState(() {
+              if (!hasStartedGeneration) {
+                _messages.last = Message.text(text: "خطا در تولید پاسخ: $error", isUser: false);
+              } else {
+                _messages.last = Message.text(text: "${buffer.toString()}\n\n[خطا: $error]", isUser: false);
+              }
+              _isStreaming = false;
+            });
+          }
+          _generationSubscription = null;
+        },
+      );
+      
+      // Add a timeout to prevent hanging
+      Timer(const Duration(seconds: 60), () {
+        if (_generationSubscription != null && _isStreaming) {
+          print("[User] ⏰ Generation timeout, stopping...");
+          _stopGeneration();
+        }
+      });
+      
+    } catch (e) {
+      print("[User] ❌ Error starting local generation: $e");
+      setState(() {
+        _messages.last = Message.text(text: "خطا در شروع تولید: $e", isUser: false);
+        _isStreaming = false;
+      });
+    }
+  }
+
+  // Generate final response with worker responses
+  Future<void> _generateFinalResponse(String userQuery, List<String> workerResponses) async {
+    try {
+      String finalQuery;
+      
+      if (workerResponses.isEmpty) {
+        finalQuery = userQuery;
+      } else {
+        // Build context from worker responses
+        final context = workerResponses.join('\n\n');
+        finalQuery = '''
+Based on these responses from other AI nodes:
+$context
+
+User's original question: $userQuery
+
+Please provide a comprehensive answer that combines the best insights from the responses above.
+''';
+      }
+
+      print("[User] 🔄 Generating final response with context");
+      await chat!.addQueryChunk(Message.text(text: finalQuery, isUser: true));
+      
+      final StringBuffer buffer = StringBuffer();
+      bool hasStartedGeneration = false;
+      
+      _generationSubscription = chat!.generateChatResponseAsync().listen(
+        (response) {
+          if (!mounted || !_isStreaming) {
+            print("[User] 🚫 Ignoring final response - not mounted or streaming stopped");
+            return;
+          }
+          
+          if (response is TextResponse) {
+            hasStartedGeneration = true;
+            buffer.write(response.token);
+            setState(() {
+              _messages.last = Message.text(text: buffer.toString(), isUser: false);
+            });
+            print("[User] 📝 Final token received: ${response.token}");
+          }
+        },
+        onDone: () {
+          print("[User] ✅ Final response generation completed");
+          if (mounted) {
+            setState(() {
+              _isStreaming = false;
+            });
+          }
+          _generationSubscription = null;
+        },
+        onError: (error) {
+          print("[User] ❌ Final response generation error: $error");
+          if (mounted) {
+            setState(() {
+              if (!hasStartedGeneration) {
+                _messages.last = Message.text(text: "خطا در تولید پاسخ نهایی: $error", isUser: false);
+              } else {
+                _messages.last = Message.text(text: "${buffer.toString()}\n\n[خطا: $error]", isUser: false);
+              }
+              _isStreaming = false;
+            });
+          }
+          _generationSubscription = null;
+        },
+      );
+      
+      // Add timeout for final response too
+      Timer(const Duration(seconds: 90), () {
+        if (_generationSubscription != null && _isStreaming) {
+          print("[User] ⏰ Final response timeout, stopping...");
+          _stopGeneration();
+        }
+      });
+      
+    } catch (e) {
+      print("[User] ❌ Error starting final response generation: $e");
+      setState(() {
+        _messages.last = Message.text(text: "خطا در شروع تولید پاسخ نهایی: $e", isUser: false);
         _isStreaming = false;
       });
     }
@@ -247,7 +593,7 @@ class ChatScreenState extends State<ChatScreen> {
         Uri.parse('$routingServerUrl/query'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'query': query}),
-      );
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         return int.tryParse(response.body.trim());
@@ -263,11 +609,11 @@ class ChatScreenState extends State<ChatScreen> {
     const maxWait = 25;
     int elapsed = 0;
 
-    while (elapsed < maxWait) {
+    while (elapsed < maxWait && _isStreaming) {
       try {
         final response = await http.get(
           Uri.parse('$routingServerUrl/response?query_number=$queryNumber'),
-        );
+        ).timeout(const Duration(seconds: 3));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -287,27 +633,6 @@ class ChatScreenState extends State<ChatScreen> {
     return [];
   }
 
-  // Generate final response combining worker responses
-  Future<String> _generateFinalResponse(String userQuery, List<String> workerResponses) async {
-    if (workerResponses.isEmpty) {
-      return await _generateDistributedResponse(userQuery);
-    }
-
-    // Build context from worker responses
-    final context = workerResponses.join('\n\n');
-    
-    final combinedQuery = '''
-Based on these responses from other AI nodes:
-$context
-
-User's original question: $userQuery
-
-Please provide a comprehensive answer that combines the best insights from the responses above.
-''';
-
-    return await _generateDistributedResponse(combinedQuery);
-  }
-
   // Cleanup query on server
   Future<void> _cleanupQuery(int queryNumber) async {
     try {
@@ -315,7 +640,7 @@ Please provide a comprehensive answer that combines the best insights from the r
         Uri.parse('$routingServerUrl/end'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'query_number': queryNumber}),
-      );
+      ).timeout(const Duration(seconds: 5));
     } catch (e) {
       print("[User] ❌ Cleanup error: $e");
     }
@@ -326,16 +651,51 @@ Please provide a comprehensive answer that combines the best insights from the r
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: Text('${widget.model.displayName} - چت توزیع‌شده'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${widget.model.displayName}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              'چت توزیع‌شده',
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
+        ),
         backgroundColor: Colors.grey[900],
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, size: 20),
-            onPressed: () {
-              setState(() {
-                _messages.clear();
-              });
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (String result) {
+              switch (result) {
+                case 'clear':
+                  _clearChatHistory();
+                  break;
+                case 'restart':
+                  _restartApp();
+                  break;
+              }
             },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'clear',
+                child: ListTile(
+                  leading: Icon(Icons.refresh, color: Colors.white),
+                  title: Text('پاک کردن چت', style: TextStyle(color: Colors.white)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'restart',
+                child: ListTile(
+                  leading: Icon(Icons.restart_alt, color: Colors.white),
+                  title: Text('شروع مجدد', style: TextStyle(color: Colors.white)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
           // Connection status indicator
           Container(
@@ -385,26 +745,39 @@ Please provide a comprehensive answer that combines the best insights from the r
 
   Widget _buildTypingIndicator() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       color: Colors.blueGrey[900],
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Text(
-            "در حال ترکیب پاسخ‌ها...",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          SizedBox(width: 8),
-          SizedBox(
+          const SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              "در حال تولید پاسخ...",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: _stopGeneration,
+            icon: const Icon(Icons.stop, size: 16),
+            label: const Text('توقف'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ],
@@ -428,10 +801,10 @@ Please provide a comprehensive answer that combines the best insights from the r
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomLeft: isUser ? Radius.circular(16) : Radius.circular(4),
-                bottomRight: isUser ? Radius.circular(4) : Radius.circular(16),
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
+                bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
               ),
               boxShadow: const [
                 BoxShadow(
@@ -463,7 +836,7 @@ Please provide a comprehensive answer that combines the best insights from the r
                     softWrap: true,
                     overflow: TextOverflow.visible,
                   )
-                else if (!message.hasImage)
+                else if (!message.hasImage && !isUser)
                   const Text(
                     "...",
                     style: TextStyle(color: Colors.white70),
@@ -570,7 +943,7 @@ Please provide a comprehensive answer that combines the best insights from the r
           if (widget.model.supportImage && !kIsWeb)
             IconButton(
               icon: const Icon(Icons.image, color: Colors.blue),
-              onPressed: _isStreaming ? null : _pickImage,
+              onPressed: (_isStreaming) ? null : _pickImage,
               tooltip: 'افزودن تصویر',
             ),
           Expanded(
@@ -582,10 +955,12 @@ Please provide a comprehensive answer that combines the best insights from the r
               ),
               child: TextField(
                 controller: _controller,
-                onSubmitted: _isStreaming ? null : _sendMessage,
+                onSubmitted: (_isStreaming) ? null : _sendMessage,
                 enabled: !_isStreaming,
                 style: const TextStyle(color: Colors.white, fontSize: 16),
                 textDirection: TextDirection.ltr,
+                maxLines: 4,
+                minLines: 1,
                 decoration: const InputDecoration(
                   hintText: 'پیام خود را تایپ کنید...',
                   hintStyle: TextStyle(color: Colors.grey),
@@ -597,8 +972,8 @@ Please provide a comprehensive answer that combines the best insights from the r
           ),
           const SizedBox(width: 8),
           FloatingActionButton(
-            onPressed: _isStreaming ? null : () => _sendMessage(_controller.text),
-            backgroundColor: _isStreaming ? Colors.grey : Colors.blue,
+            onPressed: (_isStreaming) ? null : () => _sendMessage(_controller.text),
+            backgroundColor: (_isStreaming) ? Colors.grey : Colors.blue,
             elevation: 2,
             mini: true,
             child: const Icon(Icons.send, color: Colors.white, size: 22),

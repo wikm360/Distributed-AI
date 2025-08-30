@@ -1,343 +1,387 @@
-// services/model_download_service.dart
-import 'dart:io';
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_gemma/flutter_gemma_interface.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// services/enhanced_model_download_service.dart
+// ignore_for_file: unused_import
 
-class ModelDownloadService {
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/logger.dart';
+import 'download_manager_service.dart';
+
+/// Enhanced model download service with full control capabilities
+class EnhancedModelDownloadService {
   final String modelUrl;
   final String modelFilename;
   final String licenseUrl;
   
-  // Download control variables
-  StreamSubscription<num>? _downloadSubscription;
-  bool _isDownloading = false;
-  bool _isPaused = false;
-  bool _isStopped = false;
+  EnhancedDownloadManager? _downloadManager;
+  StreamSubscription<DownloadProgress>? _progressSubscription;
+  StreamSubscription<DownloadStatus>? _statusSubscription;
   
-  // Completer for download control
-  Completer<void>? _downloadCompleter;
+  // Callback functions
+  Function(double)? _onProgress;
+  Function(String)? _onStatus;
+  Function(String)? _onError;
+  
+  // Current state
+  bool _isInitialized = false;
+  String? _lastError;
 
-  ModelDownloadService({
+  EnhancedModelDownloadService({
     required this.modelUrl,
     required this.modelFilename,
     required this.licenseUrl,
   });
 
-  /// Load the token from SharedPreferences.
-  Future<String?> loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token_${modelFilename}');
-  }
-
-  /// Save the token to SharedPreferences with model-specific key.
-  Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token_${modelFilename}', token);
-  }
-
-  /// Helper method to get the file path.
-  Future<String> getFilePath() async {
-    final directory = await getApplicationDocumentsDirectory();
-    return '${directory.path}/$modelFilename';
-  }
-
-  /// Enhanced model existence check with better validation
-  Future<bool> checkModelExistence(String token) async {
+  /// Initialize the service
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
     try {
-      final filePath = await getFilePath();
-      final file = File(filePath);
-
-      if (!file.existsSync()) {
-        if (kDebugMode) {
-          print('Model file does not exist: $filePath');
-        }
-        return false;
-      }
-
-      // Check if file size matches expected size
-      final localFileSize = await file.length();
-      if (localFileSize == 0) {
-        // Empty file, delete it
-        await file.delete();
-        return false;
-      }
-
-      // Optional: Check remote file size for validation
-      try {
-        final Map<String, String> headers =
-            token.isNotEmpty ? {'Authorization': 'Bearer $token'} : {};
-        final headResponse = await http.head(
-          Uri.parse(modelUrl), 
-          headers: headers,
-        ).timeout(const Duration(seconds: 10));
-
-        if (headResponse.statusCode == 200) {
-          final contentLengthHeader = headResponse.headers['content-length'];
-          if (contentLengthHeader != null) {
-            final remoteFileSize = int.parse(contentLengthHeader);
-            if (localFileSize != remoteFileSize) {
-              if (kDebugMode) {
-                print('File size mismatch: local=$localFileSize, remote=$remoteFileSize');
-              }
-              // Size mismatch - file might be corrupted or partially downloaded
-              // Don't delete automatically, let user decide
-              return localFileSize > (remoteFileSize * 0.9); // Consider as existing if > 90%
-            }
-          }
-        }
-      } catch (e) {
-        // Network check failed, but local file exists - consider it valid
-        if (kDebugMode) {
-          print('Remote size check failed: $e');
-        }
-      }
-
-      // File exists and seems valid
-      return true;
+      Logger.info("Initializing enhanced model download service", "ModelDownloadService");
+      _isInitialized = true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Error checking model existence: $e');
-      }
+      Logger.error("Failed to initialize service", "ModelDownloadService", e);
+      rethrow;
+    }
+  }
+
+  /// Load saved auth token
+  Future<String?> loadToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token_$modelFilename');
+    } catch (e) {
+      Logger.error("Failed to load token", "ModelDownloadService", e);
+      return null;
+    }
+  }
+
+  /// Save auth token
+  Future<void> saveToken(String token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token_$modelFilename', token);
+      Logger.success("Token saved successfully", "ModelDownloadService");
+    } catch (e) {
+      Logger.error("Failed to save token", "ModelDownloadService", e);
+      rethrow;
+    }
+  }
+
+  /// Get the target file path
+  Future<String> getFilePath() async {
+    await initialize();
+    
+    // Create temporary download manager to get file path
+    final tempManager = EnhancedDownloadManager(
+      url: modelUrl,
+      filename: modelFilename,
+    );
+    
+    final path = await tempManager.getFilePath();
+    tempManager.dispose();
+    
+    return path;
+  }
+
+  /// Check if model exists and is complete
+  Future<bool> checkModelExistence([String? token]) async {
+    try {
+      await initialize();
+      
+      // Create temporary download manager
+      final tempManager = EnhancedDownloadManager(
+        url: modelUrl,
+        filename: modelFilename,
+        authToken: token,
+      );
+      
+      final exists = await tempManager.isFileComplete();
+      tempManager.dispose();
+      
+      Logger.info("Model existence check: $exists", "ModelDownloadService");
+      return exists;
+    } catch (e) {
+      Logger.error("Error checking model existence", "ModelDownloadService", e);
       return false;
     }
   }
 
-  /// Enhanced download with proper state management
+  /// Start downloading the model
   Future<void> downloadModel({
     required String token,
     required Function(double) onProgress,
     required Function(String) onStatus,
+    Function(String)? onError,
   }) async {
-    // Force cleanup any previous state
-    await _forceCleanup();
-    
-    if (_isDownloading) {
-      throw Exception('Download already in progress');
+    if (_downloadManager?.isDownloading == true) {
+      throw StateError('Download already in progress');
     }
 
-    _isDownloading = true;
-    _isPaused = false;
-    _isStopped = false;
-    _downloadCompleter = Completer<void>();
+    await initialize();
+    
+    _onProgress = onProgress;
+    _onStatus = onStatus;
+    _onError = onError;
+    _lastError = null;
 
     try {
       onStatus('آماده‌سازی دانلود...');
       
-      // Small delay to ensure UI updates
-      await Future.delayed(const Duration(milliseconds: 200));
-      
-      if (_isStopped) {
-        throw Exception('Download cancelled during initialization');
-      }
-      
-      onStatus('شروع دانلود...');
-      
-      final stream = FlutterGemmaPlugin.instance.modelManager
-          .downloadModelFromNetworkWithProgress(modelUrl, token: token);
-      
-      _downloadSubscription = stream.listen(
-        (progress) {
-          if (_isStopped) {
-            return; // Ignore progress updates if stopped
-          }
-          
-          if (!_isPaused) {
-            onProgress(progress.toDouble());
-            if (progress < 100) {
-              onStatus('در حال دانلود... ${progress.toStringAsFixed(1)}%');
-            } else {
-              onStatus('تکمیل دانلود');
-            }
-          }
-        },
-        onDone: () {
-          if (_isStopped) {
-            return; // Don't complete if manually stopped
-          }
-          
-          if (!_downloadCompleter!.isCompleted) {
-            _downloadCompleter!.complete();
-          }
-          _cleanup();
-          onStatus('دانلود با موفقیت تکمیل شد');
-        },
-        onError: (error) {
-          if (!_downloadCompleter!.isCompleted) {
-            _downloadCompleter!.completeError(error);
-          }
-          _cleanup();
-          onStatus('خطا در دانلود: $error');
-        },
+      // Create download manager
+      _downloadManager = EnhancedDownloadManager(
+        url: modelUrl,
+        filename: modelFilename,
+        authToken: token,
       );
 
-      await _downloadCompleter!.future;
-    } catch (e) {
-      _cleanup();
-      if (kDebugMode) {
-        print('Error downloading model: $e');
+      // Setup listeners
+      _setupListeners();
+      
+      // Check if file already complete
+      if (await _downloadManager!.isFileComplete()) {
+        onStatus('مدل از قبل دانلود شده است');
+        onProgress(100.0);
+        return;
       }
+
+      onStatus('شروع دانلود...');
+      await _downloadManager!.startDownload();
+      
+    } catch (e) {
+      _lastError = e.toString();
+      Logger.error("Download failed", "ModelDownloadService", e);
+      onStatus('خطا در دانلود: $e');
+      if (onError != null) {
+        onError(e.toString());
+      }
+      await _cleanup();
       rethrow;
     }
   }
 
-  /// Force cleanup of any ongoing operations
-  Future<void> _forceCleanup() async {
-    try {
-      await _downloadSubscription?.cancel();
-      _downloadSubscription = null;
-      
-      if (_downloadCompleter != null && !_downloadCompleter!.isCompleted) {
-        _downloadCompleter!.completeError('Force cleanup');
-      }
-      _downloadCompleter = null;
-      
-      _isDownloading = false;
-      _isPaused = false;
-      _isStopped = false;
-      
-      // Give some time for cleanup
-      await Future.delayed(const Duration(milliseconds: 500));
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error in force cleanup: $e');
-      }
-    }
-  }
-
-  /// Internal cleanup method
-  void _cleanup() {
-    _isDownloading = false;
-    _isPaused = false;
-    _isStopped = false;
-  }
-
-  /// Pause download - Note: This may not work properly with Flutter Gemma
+  /// Pause current download
   Future<void> pauseDownload() async {
-    if (_isDownloading && !_isPaused) {
-      _isPaused = true;
-      // Note: We keep the subscription active but just ignore progress updates
+    if (_downloadManager == null) {
+      Logger.warning("No active download to pause", "ModelDownloadService");
+      return;
+    }
+
+    try {
+      await _downloadManager!.pauseDownload();
+      _onStatus?.call('دانلود متوقف شد');
+      Logger.success("Download paused successfully", "ModelDownloadService");
+    } catch (e) {
+      Logger.error("Failed to pause download", "ModelDownloadService", e);
+      _onStatus?.call('خطا در توقف دانلود: $e');
+      rethrow;
     }
   }
 
-  /// Resume download - Actually restart the download
+  /// Resume paused download
   Future<void> resumeDownload({
     required String token,
     required Function(double) onProgress,
     required Function(String) onStatus,
+    Function(String)? onError,
   }) async {
-    if (!_isPaused && _isDownloading) {
-      throw Exception('Download is not paused');
+    if (_downloadManager == null || !_downloadManager!.isPaused) {
+      // If no manager or not paused, start fresh
+      return downloadModel(
+        token: token,
+        onProgress: onProgress,
+        onStatus: onStatus,
+        onError: onError,
+      );
     }
 
-    // Since Flutter Gemma doesn't support true pause/resume, we restart
-    await _forceCleanup();
-    await downloadModel(
-      token: token,
-      onProgress: onProgress,
-      onStatus: onStatus,
-    );
-  }
+    _onProgress = onProgress;
+    _onStatus = onStatus;
+    _onError = onError;
 
-  /// Stop download completely with force cleanup
-  Future<void> stopDownload() async {
-    _isStopped = true;
-    
     try {
-      // Cancel subscription first
-      await _downloadSubscription?.cancel();
-      _downloadSubscription = null;
-      
-      // Complete or error the completer
-      if (_downloadCompleter != null && !_downloadCompleter!.isCompleted) {
-        _downloadCompleter!.completeError('Download cancelled by user');
-      }
-      _downloadCompleter = null;
-      
-      // Reset states
-      _isDownloading = false;
-      _isPaused = false;
-      
-      // Try to delete partial file
-      try {
-        final filePath = await getFilePath();
-        final file = File(filePath);
-        if (file.existsSync()) {
-          final fileSize = await file.length();
-          // Only delete if file is relatively small (incomplete)
-          if (fileSize < 100 * 1024 * 1024) { // Less than 100MB
-            await file.delete();
-            if (kDebugMode) {
-              print('Deleted partial file: $filePath');
-            }
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error deleting partial file: $e');
-        }
-      }
-      
-      // Force cleanup after a delay
-      Future.delayed(const Duration(seconds: 1), () {
-        _isStopped = false;
-      });
-      
+      onStatus('در حال ادامه دانلود...');
+      await _downloadManager!.resumeDownload();
+      Logger.success("Download resumed successfully", "ModelDownloadService");
     } catch (e) {
-      if (kDebugMode) {
-        print('Error stopping download: $e');
-      }
-      _cleanup();
-      _isStopped = false;
-    }
-  }
-
-  /// Check download status
-  bool get isDownloading => _isDownloading && !_isStopped;
-  bool get isPaused => _isPaused && !_isStopped;
-  bool get isStopped => _isStopped;
-
-  /// Enhanced delete with proper cleanup
-  Future<void> deleteModel() async {
-    try {
-      // Stop any ongoing download first
-      await stopDownload();
-      
-      // Wait a bit for cleanup
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      final filePath = await getFilePath();
-      final file = File(filePath);
-
-      if (file.existsSync()) {
-        await file.delete();
-        if (kDebugMode) {
-          print('Model deleted: $filePath');
-        }
-      }
-
-      // Clear related preferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token_${modelFilename}');
-      
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error deleting model: $e');
+      Logger.error("Failed to resume download", "ModelDownloadService", e);
+      onStatus('خطا در ادامه دانلود: $e');
+      if (onError != null) {
+        onError(e.toString());
       }
       rethrow;
     }
   }
 
-  /// Cleanup resources
-  void dispose() {
-    _isStopped = true;
-    _downloadSubscription?.cancel();
-    if (_downloadCompleter != null && !_downloadCompleter!.isCompleted) {
-      _downloadCompleter!.completeError('Service disposed');
+  /// Stop/cancel current download
+  Future<void> stopDownload() async {
+    if (_downloadManager == null) {
+      Logger.warning("No active download to stop", "ModelDownloadService");
+      return;
     }
-    _cleanup();
+
+    try {
+      await _downloadManager!.cancelDownload();
+      _onStatus?.call('دانلود لغو شد');
+      Logger.success("Download cancelled successfully", "ModelDownloadService");
+    } catch (e) {
+      Logger.error("Failed to cancel download", "ModelDownloadService", e);
+      _onStatus?.call('خطا در لغو دانلود: $e');
+    } finally {
+      await _cleanup();
+    }
+  }
+
+  /// Delete downloaded model
+  Future<void> deleteModel() async {
+    try {
+      // Stop any active download first
+      await stopDownload();
+      
+      // Create temporary manager to delete file
+      if (_downloadManager == null) {
+        _downloadManager = EnhancedDownloadManager(
+          url: modelUrl,
+          filename: modelFilename,
+        );
+      }
+      
+      await _downloadManager!.deleteFile();
+      
+      // Clear saved token
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_token_$modelFilename');
+      
+      Logger.success("Model deleted successfully", "ModelDownloadService");
+    } catch (e) {
+      Logger.error("Failed to delete model", "ModelDownloadService", e);
+      rethrow;
+    } finally {
+      await _cleanup();
+    }
+  }
+
+  /// Setup progress and status listeners
+  void _setupListeners() {
+    if (_downloadManager == null) return;
+
+    // Progress listener
+    _progressSubscription = _downloadManager!.progressStream.listen(
+      (progress) {
+        _onProgress?.call(progress.percentage);
+        
+        if (progress.status == DownloadStatus.downloading) {
+          final speedMB = (progress.speed / 1024 / 1024);
+          final remainingTime = progress.estimatedTime;
+          
+          String statusText = 'در حال دانلود... ${progress.percentage.toStringAsFixed(1)}%';
+          
+          if (speedMB > 0) {
+            statusText += ' - ${speedMB.toStringAsFixed(1)} MB/s';
+          }
+          
+          if (remainingTime.inSeconds > 0) {
+            final minutes = remainingTime.inMinutes;
+            final seconds = remainingTime.inSeconds % 60;
+            statusText += ' - باقیمانده: ${minutes}m ${seconds}s';
+          }
+          
+          _onStatus?.call(statusText);
+        }
+        
+        if (progress.error != null) {
+          _lastError = progress.error;
+          _onError?.call(progress.error!);
+        }
+      },
+      onError: (error) {
+        _lastError = error.toString();
+        Logger.error("Progress stream error", "ModelDownloadService", error);
+        _onError?.call(error.toString());
+      },
+    );
+
+    // Status listener
+    _statusSubscription = _downloadManager!.statusStream.listen(
+      (status) {
+        switch (status) {
+          case DownloadStatus.preparing:
+            _onStatus?.call('آماده‌سازی دانلود...');
+            break;
+          case DownloadStatus.downloading:
+            _onStatus?.call('در حال دانلود...');
+            break;
+          case DownloadStatus.paused:
+            _onStatus?.call('دانلود متوقف شده');
+            break;
+          case DownloadStatus.completed:
+            _onStatus?.call('دانلود با موفقیت تکمیل شد');
+            _onProgress?.call(100.0);
+            _cleanup();
+            break;
+          case DownloadStatus.cancelled:
+            _onStatus?.call('دانلود لغو شد');
+            _cleanup();
+            break;
+          case DownloadStatus.error:
+            _onStatus?.call('خطا در دانلود: $_lastError');
+            _cleanup();
+            break;
+          default:
+            break;
+        }
+      },
+      onError: (error) {
+        Logger.error("Status stream error", "ModelDownloadService", error);
+        _onError?.call(error.toString());
+      },
+    );
+  }
+
+  /// Get current download status
+  DownloadStatus? get downloadStatus => _downloadManager?.status;
+  
+  /// Check if download is active
+  bool get isDownloading => _downloadManager?.isDownloading ?? false;
+  
+  /// Check if download is paused
+  bool get isPaused => _downloadManager?.isPaused ?? false;
+  
+  /// Check if download is completed
+  bool get isCompleted => _downloadManager?.isCompleted ?? false;
+  
+  /// Check if download is cancelled
+  bool get isCancelled => _downloadManager?.isCancelled ?? false;
+  
+  /// Get current download progress (0.0 to 1.0)
+  double get progress => _downloadManager?.progress ?? 0.0;
+  
+  /// Get last error message
+  String? get lastError => _lastError;
+
+  /// Cleanup resources
+  Future<void> _cleanup() async {
+    await _progressSubscription?.cancel();
+    await _statusSubscription?.cancel();
+    
+    _progressSubscription = null;
+    _statusSubscription = null;
+    _onProgress = null;
+    _onStatus = null;
+    _onError = null;
+  }
+
+  /// Dispose the service
+  Future<void> dispose() async {
+    try {
+      await _cleanup();
+      await _downloadManager?.dispose();
+      _downloadManager = null;
+      _isInitialized = false;
+      Logger.info("Model download service disposed", "ModelDownloadService");
+    } catch (e) {
+      Logger.error("Error disposing service", "ModelDownloadService", e);
+    }
   }
 }

@@ -1,29 +1,50 @@
-// main.dart
+// main.dart - نسخه تصحیح شده
 import 'package:flutter/material.dart';
-import 'model_selection_screen.dart';
+import 'core/services/backend_factory.dart';
+import 'ui/screens/modernized_model_selection_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ChatApp());
+  
+  // Initialize backend factory
+  BackendFactory.initialize();
+  
+  runApp(const ModernizedChatApp());
 }
 
-class ChatApp extends StatelessWidget {
-  const ChatApp({super.key});
+class ModernizedChatApp extends StatelessWidget {
+  const ModernizedChatApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Distributed AI Chat',
+      title: 'Distributed AI Chat v2',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        brightness: Brightness.light,
+        primarySwatch: Colors.blue,
+      ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Color(0xFF121212),
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardColor: Colors.grey[850],
         textTheme: const TextTheme(
           bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white),
         ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ),
       themeMode: ThemeMode.dark,
-      home: const SafeArea(child: ModelSelectionScreen()),
+      // حذف home و استفاده از initialRoute
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SafeArea(child: ModernizedModelSelectionScreen()),
+      },
     );
   }
 }

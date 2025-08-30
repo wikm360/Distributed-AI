@@ -1,0 +1,660 @@
+// ui/screens/modernized_chat_screen.dart - Fixed Backend Management
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_gemma/pigeon.g.dart';
+import 'package:flutter_gemma/core/model.dart';
+import '../../core/interfaces/chat_controller.dart';
+import '../../core/interfaces/base_ai_backend.dart';
+import '../../core/services/backend_factory.dart';
+import '../../distributed/coordinator/distributed_coordinator.dart';
+import '../../distributed/routing/routing_client_impl.dart';
+import '../controllers/chat_controller_impl.dart';
+import '../widgets/message_bubble.dart';
+import '../widgets/typing_indicator.dart';
+import '../widgets/connection_status_indicator.dart';
+import '../../models/model.dart';
+import '../../utils/logger.dart';
+import '../../core/interfaces/distributed_worker.dart';
+
+class ModernizedChatScreen extends StatefulWidget {
+  final Model model;
+  final PreferredBackend? selectedBackend;
+  final BaseAIBackend? preInitializedBackend;
+
+  const ModernizedChatScreen({
+    super.key,
+    required this.model,
+    this.selectedBackend,
+    this.preInitializedBackend,
+  });
+
+  @override
+  State<ModernizedChatScreen> createState() => _ModernizedChatScreenState();
+}
+
+class _ModernizedChatScreenState extends State<ModernizedChatScreen> {
+  // Controllers
+  late final ChatControllerImpl _chatController;
+  EnhancedDistributedCoordinator? _distributedCoordinator;
+  late final TextEditingController _messageController;
+
+  // State
+  bool _isInitialized = false;
+  bool _isDistributedMode = false;
+  String? _error;
+  ChatState _chatState = ChatState(messages: []);
+  BaseAIBackend? _currentBackend;
+
+  // Subscriptions
+  StreamSubscription<ChatState>? _chatStateSubscription;
+  StreamSubscription<WorkerEvent>? _workerEventSubscription;
+
+  // Streaming control for distributed mode
+  bool _isStreamingStopped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeControllers();
+    _initializeChat();
+  }
+
+  void _initializeControllers() {
+    _chatController = ChatControllerImpl();
+    _messageController = TextEditingController();
+
+    // Listen to chat state changes
+    _chatStateSubscription = _chatController.stateStream.listen((state) {
+      if (mounted) {
+        setState(() {
+          _chatState = state;
+        });
+      }
+    });
+  }
+
+  Future<void> _initializeChat() async {
+    try {
+      Logger.info("Initializing chat for: ${widget.model.displayName}", "ModernizedChatScreen");
+
+      // Step 1: Setup backend first
+      await _setupBackend();
+
+      // Step 2: Initialize chat controller with backend
+      await _chatController.setBackend(_currentBackend!);
+
+      // Step 3: Wait a bit for backend to stabilize
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Step 4: Initialize distributed system (if possible)
+      await _initializeDistributedSystem();
+
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _error = null;
+        });
+      }
+
+      Logger.success("Chat initialization completed", "ModernizedChatScreen");
+    } catch (e) {
+      Logger.error("Chat initialization failed", "ModernizedChatScreen", e);
+      if (mounted) {
+        setState(() {
+          _error = "Chat initialization error: $e";
+          _isInitialized = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _setupBackend() async {
+    // Use pre-initialized backend or create new one
+    if (widget.preInitializedBackend != null && widget.preInitializedBackend!.isInitialized) {
+      Logger.info("Using pre-initialized backend", "ModernizedChatScreen");
+      _currentBackend = widget.preInitializedBackend;
+
+      // Verify backend is really initialized
+      if (!_currentBackend!.isInitialized) {
+        Logger.warning("Pre-initialized backend is not actually initialized", "ModernizedChatScreen");
+        throw Exception('Backend is not properly initialized');
+      }
+
+      // Test backend health
+      final isHealthy = await _currentBackend!.healthCheck();
+      if (!isHealthy) {
+        Logger.warning("Backend health check failed", "ModernizedChatScreen");
+        throw Exception('Backend health check failed');
+      }
+
+      Logger.success("Backend verified and healthy", "ModernizedChatScreen");
+    } else {
+      Logger.info("Creating new backend", "ModernizedChatScreen");
+
+      // Initialize backend factory if not done
+      BackendFactory.initialize();
+      _currentBackend = BackendFactory.createDefaultBackend();
+      if (_currentBackend == null) {
+        throw Exception('Failed to create backend');
+      }
+
+      // Initialize backend
+      final config = _buildBackendConfig();
+      await _currentBackend!.initialize(
+        modelPath: widget.model.url,
+        config: config,
+      );
+
+      // Verify initialization
+      if (!_currentBackend!.isInitialized) {
+        throw Exception('Backend failed to initialize properly');
+      }
+
+      Logger.success("New backend created and initialized", "ModernizedChatScreen");
+    }
+  }
+
+  Future<void> _initializeDistributedSystem() async {
+    // Only initialize if backend is ready
+    if (_currentBackend == null || !_currentBackend!.isInitialized) {
+      Logger.warning("Cannot initialize distributed system: backend not ready", "ModernizedChatScreen");
+      return;
+    }
+
+    try {
+      // Initialize distributed coordinator
+      _distributedCoordinator = EnhancedDistributedCoordinator(
+        backend: _currentBackend!,
+        routingClient: EnhancedRoutingClientImpl("http://85.133.228.31:8313"),
+      );
+
+      // Try to enable distributed mode
+      await _tryEnableDistributedMode();
+    } catch (e) {
+      Logger.warning("Failed to initialize distributed system: $e", "ModernizedChatScreen");
+      // Don't throw - continue in local mode
+    }
+  }
+
+  Map<String, dynamic> _buildBackendConfig() {
+    return {
+      'modelType': _getModelTypeForModel(widget.model),
+      'preferredBackend': widget.selectedBackend ?? widget.model.preferredBackend,
+      'maxTokens': widget.model.maxTokens,
+      'supportImage': widget.model.supportImage,
+      'maxNumImages': widget.model.maxNumImages ?? 1,
+      'temperature': widget.model.temperature,
+      'randomSeed': DateTime.now().millisecondsSinceEpoch,
+      'topK': widget.model.topK,
+      'topP': widget.model.topP,
+      'tokenBuffer': 256,
+      'supportsFunctionCalls': widget.model.supportsFunctionCalls,
+      'tools': [],
+      'isThinking': widget.model.isThinking,
+    };
+  }
+
+  ModelType _getModelTypeForModel(Model model) {
+    if (model.displayName.toLowerCase().contains('deepseek')) {
+      return ModelType.deepSeek;
+    }
+    return ModelType.gemmaIt;
+  }
+
+  Future<void> _tryEnableDistributedMode() async {
+    if (_distributedCoordinator == null) {
+      Logger.warning("No distributed coordinator available", "ModernizedChatScreen");
+      return;
+    }
+
+    try {
+      // Double-check backend is ready
+      if (_currentBackend == null || !_currentBackend!.isInitialized) {
+        Logger.warning("Backend not ready for distributed mode", "ModernizedChatScreen");
+        return;
+      }
+
+      // Perform health check
+      final isHealthy = await _currentBackend!.healthCheck();
+      if (!isHealthy) {
+        Logger.warning("Backend health check failed before distributed mode", "ModernizedChatScreen");
+        return;
+      }
+
+      Logger.info("Attempting to enable distributed mode...", "ModernizedChatScreen");
+      await _distributedCoordinator!.enableDistributedMode();
+
+      // Listen to worker events
+      final workerEvents = _distributedCoordinator!.workerEvents;
+      if (workerEvents != null) {
+        _workerEventSubscription = workerEvents.listen((event) {
+          Logger.info("Worker event: ${event.type} - ${event.message}", "ModernizedChatScreen");
+          // Handle important events
+          if (event.type == WorkerEventType.error) {
+            Logger.error("Worker error: ${event.message}", "ModernizedChatScreen");
+          }
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _isDistributedMode = true;
+        });
+      }
+
+      Logger.success("Distributed mode enabled successfully", "ModernizedChatScreen");
+    } catch (e) {
+      Logger.warning("Failed to enable distributed mode: $e", "ModernizedChatScreen");
+      // Continue in local mode
+      if (mounted) {
+        setState(() {
+          _isDistributedMode = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    Logger.info("Disposing chat screen...", "ModernizedChatScreen");
+
+    // Cancel subscriptions first
+    _chatStateSubscription?.cancel();
+    _workerEventSubscription?.cancel();
+
+    // Dispose controllers
+    _messageController.dispose();
+    _chatController.dispose();
+
+    // Dispose distributed coordinator
+    _distributedCoordinator?.dispose();
+
+    // Only dispose backend if we created it ourselves
+    if (widget.preInitializedBackend == null && _currentBackend != null) {
+      Logger.info("Disposing self-created backend", "ModernizedChatScreen");
+      _currentBackend!.dispose();
+    } else if (_currentBackend != null) {
+      Logger.info("Keeping pre-initialized backend (not disposing)", "ModernizedChatScreen");
+    }
+
+    super.dispose();
+  }
+
+  Future<void> _sendMessage() async {
+    final message = _messageController.text.trim();
+    if (message.isEmpty) return;
+
+    _messageController.clear();
+    _isStreamingStopped = false; // Reset streaming control
+
+    try {
+      if (_isDistributedMode && _distributedCoordinator != null) {
+        await _sendDistributedMessage(message);
+      } else {
+        await _chatController.sendMessage(message);
+      }
+    } catch (e) {
+      Logger.error("Error sending message", "ModernizedChatScreen", e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا در ارسال پیام: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendDistributedMessage(String message) async {
+    // Add user message to UI
+    final userMessage = ChatMessage(text: message, isUser: true);
+    final assistantMessage = ChatMessage(text: '', isUser: false);
+
+    setState(() {
+      _chatState = _chatState.copyWith(
+        messages: [..._chatState.messages, userMessage, assistantMessage],
+        isGenerating: true,
+      );
+    });
+
+    try {
+      // Process through distributed coordinator with real streaming
+      await _distributedCoordinator!.processDistributedQuery(
+        message,
+        onStreamToken: (token) {
+          if (mounted && !_isStreamingStopped && _chatState.isGenerating) {
+            final updatedMessages = [..._chatState.messages];
+            final currentText = updatedMessages.last.text + token;
+            updatedMessages.last = assistantMessage.copyWith(text: currentText);
+
+            setState(() {
+              _chatState = _chatState.copyWith(messages: updatedMessages);
+            });
+          }
+        },
+      );
+
+      // ✅ فقط isGenerating رو خاموش کن — نه متن رو دوباره ست کن
+      if (mounted && !_isStreamingStopped) {
+        setState(() {
+          _chatState = _chatState.copyWith(isGenerating: false);
+        });
+      }
+    } catch (e) {
+      // Update assistant message with error
+      final updatedMessages = [..._chatState.messages];
+      updatedMessages.last = assistantMessage.copyWith(text: "خطا: $e");
+
+      if (mounted) {
+        setState(() {
+          _chatState = _chatState.copyWith(
+            messages: updatedMessages,
+            isGenerating: false,
+            error: e.toString(),
+          );
+        });
+      }
+    }
+  }
+
+  Future<void> _stopGeneration() async {
+    if (_isDistributedMode) {
+      _isStreamingStopped = true;
+      setState(() {
+        _chatState = _chatState.copyWith(isGenerating: false);
+      });
+    } else {
+      await _chatController.stopGeneration();
+    }
+  }
+
+  Future<void> _clearChat() async {
+    try {
+      if (_isDistributedMode) {
+        setState(() {
+          _chatState = ChatState(messages: []);
+        });
+      } else {
+        await _chatController.clearHistory();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('چت جدید شروع شد - تاریخچه پاک شد')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا در پاک کردن چت: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _restartApp() async {
+    try {
+      Logger.info("Restarting app...", "ModernizedChatScreen");
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا در راه‌اندازی مجدد: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleDistributedMode() async {
+    try {
+      if (_isDistributedMode) {
+        // Disable distributed mode
+        if (_distributedCoordinator != null) {
+          await _distributedCoordinator!.disableDistributedMode();
+        }
+        await _workerEventSubscription?.cancel();
+        _workerEventSubscription = null;
+
+        setState(() {
+          _isDistributedMode = false;
+        });
+
+        Logger.success("Distributed mode disabled", "ModernizedChatScreen");
+      } else {
+        // Enable distributed mode
+        if (_distributedCoordinator == null) {
+          await _initializeDistributedSystem();
+        }
+        if (_distributedCoordinator != null) {
+          await _tryEnableDistributedMode();
+        }
+
+        Logger.success("Attempted to enable distributed mode", "ModernizedChatScreen");
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isDistributedMode ? 'حالت توزیع‌شده فعال شد' : 'حالت محلی فعال شد',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      Logger.error("Error toggling distributed mode", "ModernizedChatScreen", e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا در تغییر حالت: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF121212),
+      appBar: _buildAppBar(),
+      body: _isInitialized ? _buildChatBody() : _buildLoadingBody(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.model.displayName,
+            style: const TextStyle(fontSize: 16),
+          ),
+          Row(
+            children: [
+              Text(
+                _isDistributedMode ? 'چت توزیع‌شده' : 'چت محلی',
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+              const SizedBox(width: 8),
+              ConnectionStatusIndicator(
+                isConnected: _isDistributedMode &&
+                    (_distributedCoordinator?.isWorkerRunning ?? false),
+              ),
+            ],
+          ),
+        ],
+      ),
+      backgroundColor: Colors.grey[900],
+      actions: [
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: (String result) {
+            switch (result) {
+              case 'clear':
+                _clearChat();
+                break;
+              case 'restart':
+                _restartApp();
+                break;
+              case 'toggle_mode':
+                _toggleDistributedMode();
+                break;
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: 'clear',
+              child: ListTile(
+                leading: Icon(Icons.refresh, color: Colors.white),
+                title: Text('پاک کردن چت', style: TextStyle(color: Colors.white)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'toggle_mode',
+              child: ListTile(
+                leading: Icon(
+                  _isDistributedMode ? Icons.computer : Icons.cloud,
+                  color: Colors.white,
+                ),
+                title: Text(
+                  _isDistributedMode ? 'حالت محلی' : 'حالت توزیع‌شده',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem<String>(
+              value: 'restart',
+              child: ListTile(
+                leading: Icon(Icons.restart_alt, color: Colors.white),
+                title: Text('شروع مجدد', style: TextStyle(color: Colors.white)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingBody() {
+    return Container(
+      color: const Color(0xFF121212),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'راه‌اندازی چت...',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatBody() {
+    return Column(
+      children: [
+        if (_chatState.error != null) _buildErrorBanner(),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: _chatState.messages.length,
+            itemBuilder: (context, index) {
+              final message = _chatState.messages[index];
+              return MessageBubble(message: message);
+            },
+          ),
+        ),
+        if (_chatState.isGenerating) 
+          TypingIndicator(onStop: _stopGeneration),
+        _buildInputArea(),
+      ],
+    );
+  }
+
+  Widget _buildErrorBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.red,
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        _chatState.error!,
+        style: const TextStyle(color: Colors.white),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      color: const Color(0xFF1E1E1E),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey[600]!, width: 1),
+              ),
+              child: TextField(
+                controller: _messageController,
+                onSubmitted: (_chatState.isGenerating) ? null : (_) => _sendMessage(),
+                enabled: !_chatState.isGenerating,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                textDirection: TextDirection.ltr,
+                maxLines: 4,
+                minLines: 1,
+                decoration: const InputDecoration(
+                  hintText: 'پیام خود را تایپ کنید...',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FloatingActionButton(
+            onPressed: (_chatState.isGenerating) ? null : _sendMessage,
+            backgroundColor: (_chatState.isGenerating) ? Colors.grey : Colors.blue,
+            elevation: 2,
+            mini: true,
+            child: const Icon(Icons.send, color: Colors.white, size: 22),
+          ),
+        ],
+      ),
+    );
+  }
+}

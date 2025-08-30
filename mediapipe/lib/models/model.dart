@@ -66,7 +66,7 @@ enum Model {
     size: '0.3GB',
     licenseUrl: 'https://huggingface.co/litert-community/gemma-3-270m-it',
     needsAuth: true,
-    preferredBackend: PreferredBackend.gpu,
+    preferredBackend: PreferredBackend.cpu,
     modelType: ModelType.gemmaIt,
     temperature: 1.0,
     topK: 64,
@@ -93,6 +93,7 @@ enum Model {
   ),
 
   // Qwen2.5 1.5B Instruct
+  // ignore: constant_identifier_names
   qwen25_1_5B_Instruct(
     url: 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
     filename: 'Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
@@ -109,6 +110,7 @@ enum Model {
     supportsFunctionCalls: true,
   ),
 
+  // ignore: constant_identifier_names
   qwen25_0_5B_instruct(
     url: 'https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
     filename: 'Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',

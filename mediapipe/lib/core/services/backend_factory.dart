@@ -1,10 +1,8 @@
-// core/services/backend_factory.dart
+// core/services/backend_factory.dart - Updated version
 import '../interfaces/base_ai_backend.dart';
-// ignore: unused_import
-import '../models/backend_config.dart';
 import '../utils/platform_utils.dart';
 import '../../backends/gemma/gemma_backend.dart';
-// import '../../backends/llama_cpp/llama_cpp_backend.dart'; // بعداً اضافه می‌شود
+import '../../backends/llama_cpp/llama_cpp_backend.dart';
 
 /// Factory برای ایجاد backend مناسب
 class BackendFactory {
@@ -20,8 +18,7 @@ class BackendFactory {
     if (PlatformUtils.isMobile || PlatformUtils.isWeb) {
       return GemmaBackend();
     } else if (PlatformUtils.isDesktop) {
-      // return LlamaCppBackend(); // بعداً اضافه می‌شود
-      throw UnsupportedError('Desktop backends not implemented yet');
+      return LlamaCppBackend();
     } else {
       throw UnsupportedError('Unsupported platform: ${PlatformUtils.platformName}');
     }
@@ -31,6 +28,16 @@ class BackendFactory {
   static BaseAIBackend? createBackend(String name) {
     final factory = _factories[name.toLowerCase()];
     return factory?.call();
+  }
+  
+  /// ایجاد LlamaCpp backend با تنظیمات مشخص
+  static LlamaCppBackend createLlamaCppBackend({
+    required String libraryPath,
+    Map<String, dynamic>? config,
+  }) {
+    final backend = LlamaCppBackend();
+    // Pre-configure for LlamaCpp specific needs
+    return backend;
   }
   
   /// لیست backend های موجود
@@ -47,15 +54,79 @@ class BackendFactory {
   
   /// مقداردهی اولیه factory ها
   static void initialize() {
-    // ثبت backend های موجود
+    // Clear existing factories
+    _factories.clear();
+    
+    // Register mobile/web backends
     if (PlatformUtils.isMobile || PlatformUtils.isWeb) {
       registerBackend('gemma', () => GemmaBackend());
       registerBackend('flutter_gemma', () => GemmaBackend());
     }
     
-    // if (PlatformUtils.isDesktop) {
-    //   registerBackend('llamacpp', () => LlamaCppBackend());
-    //   registerBackend('llama_cpp', () => LlamaCppBackend());
-    // }
+    // Register desktop backends
+    if (PlatformUtils.isDesktop) {
+      registerBackend('llamacpp', () => LlamaCppBackend());
+      registerBackend('llama_cpp', () => LlamaCppBackend());
+      registerBackend('llama-cpp', () => LlamaCppBackend());
+    }
+    
+    // Register universal backends (available on all platforms)
+    // Add here if you have backends that work on all platforms
+  }
+  
+  /// Check if a specific backend is supported on current platform
+  static bool isBackendSupported(String backendName) {
+    final name = backendName.toLowerCase();
+    
+    if (name.contains('gemma') || name.contains('flutter')) {
+      return PlatformUtils.isMobile || PlatformUtils.isWeb;
+    }
+    
+    if (name.contains('llama') || name.contains('cpp')) {
+      return PlatformUtils.isDesktop;
+    }
+    
+    return false;
+  }
+  
+  /// Get recommended backend for current platform
+  static String getRecommendedBackend() {
+    if (PlatformUtils.isMobile || PlatformUtils.isWeb) {
+      return 'gemma';
+    } else if (PlatformUtils.isDesktop) {
+      return 'llamacpp';
+    } else {
+      return 'gemma'; // fallback
+    }
+  }
+  
+  /// Get backend info
+  static Map<String, dynamic> getBackendInfo(String backendName) {
+    final name = backendName.toLowerCase();
+    
+    if (name.contains('gemma')) {
+      return {
+        'name': 'Flutter Gemma',
+        'platforms': ['Android', 'iOS', 'Web'],
+        'description': 'Optimized for mobile devices with GPU acceleration',
+        'features': ['GPU Support', 'Multimodal', 'Function Calls'],
+      };
+    }
+    
+    if (name.contains('llama')) {
+      return {
+        'name': 'LlamaCpp',
+        'platforms': ['Windows', 'macOS', 'Linux'],
+        'description': 'High-performance CPU inference for desktop',
+        'features': ['Multi-threading', 'Large Models', 'Custom Formats'],
+      };
+    }
+    
+    return {
+      'name': 'Unknown',
+      'platforms': [],
+      'description': 'Unknown backend',
+      'features': [],
+    };
   }
 }

@@ -452,10 +452,6 @@ class _ModernizedModelDownloadScreenState extends State<ModernizedModelDownloadS
         preparedBackend = BackendFactory.createBackend(_selectedBackendName!);
         preparedBackend ??= BackendFactory.createDefaultBackend();
         
-        if (preparedBackend == null) {
-          throw Exception('Failed to create backend');
-        }
-        
         // Build proper config
         final config = _buildBackendConfig();
         

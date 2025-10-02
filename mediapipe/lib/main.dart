@@ -1,50 +1,41 @@
-// main.dart - نسخه تصحیح شده
+// main.dart - نقطه ورود برنامه
 import 'package:flutter/material.dart';
-import 'core/services/backend_factory.dart';
-import 'ui/screens/modernized_model_selection_screen.dart';
+import 'config.dart';
+import 'frontend/screens/model_list_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize backend factory
-  BackendFactory.initialize();
-  
-  runApp(const ModernizedChatApp());
+void main() {
+  runApp(const AIDistributedApp());
 }
 
-class ModernizedChatApp extends StatelessWidget {
-  const ModernizedChatApp({super.key});
+class AIDistributedApp extends StatelessWidget {
+  const AIDistributedApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Distributed AI Chat v2',
+      title: 'Distributed AI Chat',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.light,
-        primarySwatch: Colors.blue,
-      ),
-      darkTheme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardColor: Colors.grey[850],
+        scaffoldBackgroundColor: AppConfig.bgDark,
+        cardColor: AppConfig.cardDark,
+        primaryColor: AppConfig.primaryColor,
         textTheme: const TextTheme(
           bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
+            backgroundColor: AppConfig.primaryColor,
             foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ),
       ),
-      themeMode: ThemeMode.dark,
-      // حذف home و استفاده از initialRoute
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SafeArea(child: ModernizedModelSelectionScreen()),
-      },
+      home: const SafeArea(child: ModelListScreen()),
     );
   }
 }

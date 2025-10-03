@@ -85,15 +85,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
   Map<String, dynamic> _buildConfig() {
     return {
       'modelType': widget.model.modelType,
-      'backend': widget.model.backend,
-      'maxTokens': AppConfig.defaultMaxTokens,
-      'hasImage': widget.model.hasImage,
-      'hasFunctionCalls': widget.model.hasFunctionCalls,
+      'backend': widget.model.preferredBackend,
+      'maxTokens': widget.model.maxTokens,
+      'hasImage': widget.model.supportImage,
+      'hasFunctionCalls': widget.model.supportsFunctionCalls,
       'isThinking': widget.model.isThinking,
-      'temperature': AppConfig.defaultTemperature,
-      'topK': AppConfig.defaultTopK,
-      'topP': AppConfig.defaultTopP,
-      'maxNumImages': 1,
+      'temperature': widget.model.temperature,
+      'topK': widget.model.topK,
+      'topP': widget.model.topP,
+      'maxNumImages': widget.model.maxNumImages ?? 1,
     };
   }
 

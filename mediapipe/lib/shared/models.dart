@@ -7,73 +7,200 @@ enum AIModel {
   gemma3n_2B(
     url: 'https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task',
     filename: 'gemma-3n-E2B-it-int4.task',
-    name: 'Gemma 3 Nano E2B IT',
-    sizeMB: 3100,
+    displayName: 'Gemma 3 Nano E2B IT',
+    size: '3.1GB',
+    licenseUrl: 'https://huggingface.co/google/gemma-3n-E2B-it-litert-preview',
     needsAuth: true,
-    backend: PreferredBackend.gpu,
+    preferredBackend: PreferredBackend.gpu,
     modelType: ModelType.gemmaIt,
-    hasImage: true,
-    hasFunctionCalls: true,
+    temperature: 1.0,
+    topK: 64,
+    topP: 0.95,
+    supportImage: true,
+    maxTokens: 4096,
+    maxNumImages: 1,
+    supportsFunctionCalls: true,
   ),
   gemma3n_4B(
     url: 'https://huggingface.co/google/gemma-3n-E4B-it-litert-preview/resolve/main/gemma-3n-E4B-it-int4.task',
     filename: 'gemma-3n-E4B-it-int4.task',
-    name: 'Gemma 3 Nano E4B IT',
-    sizeMB: 6500,
+    displayName: 'Gemma 3 Nano E4B IT',
+    size: '6.5GB',
+    licenseUrl: 'https://huggingface.co/google/gemma-3n-E4B-it-litert-preview',
     needsAuth: true,
-    backend: PreferredBackend.gpu,
+    preferredBackend: PreferredBackend.gpu,
     modelType: ModelType.gemmaIt,
-    hasImage: true,
-    hasFunctionCalls: true,
+    temperature: 1.0,
+    topK: 64,
+    topP: 0.95,
+    supportImage: true,
+    maxTokens: 4096,
+    maxNumImages: 1,
+    supportsFunctionCalls: true,
   ),
   gemma3_1B(
     url: 'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task',
     filename: 'Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task',
-    name: 'Gemma 3 1B IT',
-    sizeMB: 500,
+    displayName: 'Gemma 3 1B IT',
+    size: '0.5GB',
+    licenseUrl: 'https://huggingface.co/litert-community/Gemma3-1B-IT',
     needsAuth: true,
-    backend: PreferredBackend.gpu,
+    preferredBackend: PreferredBackend.gpu,
     modelType: ModelType.gemmaIt,
+    temperature: 1.0,
+    topK: 64,
+    topP: 0.95,
+    maxTokens: 128,
+  ),
+  gemma3_270M(
+    url: 'https://huggingface.co/litert-community/gemma-3-270m-it/resolve/main/gemma3-270m-it-q8.task',
+    filename: 'gemma3-270m-it-q8.task',
+    displayName: 'Gemma 3 270M IT',
+    size: '0.3GB',
+    licenseUrl: 'https://huggingface.co/litert-community/gemma-3-270m-it',
+    needsAuth: true,
+    preferredBackend: PreferredBackend.cpu,
+    modelType: ModelType.gemmaIt,
+    temperature: 1.0,
+    topK: 64,
+    topP: 0.95,
+    maxTokens: 1024,
+    supportsFunctionCalls: false,
   ),
   deepseek(
     url: 'https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/deepseek_q8_ekv1280.task',
     filename: 'deepseek_q8_ekv1280.task',
-    name: 'DeepSeek R1 Distill Qwen 1.5B',
-    sizeMB: 1700,
+    displayName: 'DeepSeek R1 Distill Qwen 1.5B',
+    size: '1.7GB',
+    licenseUrl: '',
     needsAuth: false,
-    backend: PreferredBackend.cpu,
+    preferredBackend: PreferredBackend.cpu,
     modelType: ModelType.deepSeek,
-    hasFunctionCalls: true,
+    temperature: 0.6,
+    topK: 40,
+    topP: 0.7,
+    supportsFunctionCalls: true,
     isThinking: true,
+  ),
+  qwen25_1_5B_Instruct(
+    url: 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+    filename: 'Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+    displayName: 'Qwen 2.5 1.5B Instruct',
+    size: '1.6GB',
+    licenseUrl: 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct',
+    needsAuth: true,
+    preferredBackend: PreferredBackend.cpu,
+    modelType: ModelType.general,
+    temperature: 1.0,
+    topK: 40,
+    topP: 0.95,
+    maxTokens: 1024,
+    supportsFunctionCalls: true,
+  ),
+  qwen25_0_5B_instruct(
+    url: 'https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+    filename: 'Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+    displayName: 'Qwen 2.5 0.5B Instruct',
+    size: '0.6GB',
+    licenseUrl: 'https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct',
+    needsAuth: true,
+    preferredBackend: PreferredBackend.cpu,
+    modelType: ModelType.general,
+    temperature: 1.0,
+    topK: 40,
+    topP: 0.95,
+    maxTokens: 128,
+    supportsFunctionCalls: true,
+  ),
+  tinyLlama_1_1B(
+    url: 'https://huggingface.co/litert-community/TinyLlama-1.1B-Chat-v1.0/resolve/main/TinyLlama-1.1B-Chat-v1.0_multi-prefill-seq_q8_ekv1280.task',
+    filename: 'TinyLlama-1.1B-Chat-v1.0_multi-prefill-seq_q8_ekv1280.task',
+    displayName: 'TinyLlama 1.1B Chat',
+    size: '1.2GB',
+    licenseUrl: 'https://huggingface.co/litert-community/TinyLlama-1.1B-Chat-v1.0',
+    needsAuth: true,
+    preferredBackend: PreferredBackend.cpu,
+    modelType: ModelType.general,
+    temperature: 0.7,
+    topK: 40,
+    topP: 0.9,
+    maxTokens: 1024,
+    supportsFunctionCalls: false,
+  ),
+  hammer2_1_0_5B(
+    url: 'https://huggingface.co/litert-community/Hammer2.1-0.5b/resolve/main/hammer2p1_05b_.task',
+    filename: 'hammer2p1_05b_.task',
+    displayName: 'Hammer 2.1 0.5B Action Model',
+    size: '0.5GB',
+    licenseUrl: 'https://huggingface.co/litert-community/Hammer2.1-0.5b',
+    needsAuth: true,
+    preferredBackend: PreferredBackend.cpu,
+    modelType: ModelType.general,
+    temperature: 0.3,
+    topK: 40,
+    topP: 0.8,
+    maxTokens: 1024,
+    supportsFunctionCalls: true,
+  ),
+  llama32_1B(
+    url: 'https://huggingface.co/litert-community/Llama-3.2-1B-Instruct/resolve/main/Llama-3.2-1B-Instruct_seq128_q8_ekv1280.tflite',
+    filename: 'Llama-3.2-1B-Instruct_seq128_q8_ekv1280.tflite',
+    displayName: 'Llama 3.2 1B Instruct',
+    size: '1.1GB',
+    licenseUrl: 'https://huggingface.co/litert-community/Llama-3.2-1B-Instruct',
+    needsAuth: true,
+    preferredBackend: PreferredBackend.cpu,
+    modelType: ModelType.general,
+    temperature: 0.6,
+    topK: 40,
+    topP: 0.9,
+    maxTokens: 1024,
+    supportsFunctionCalls: false,
   );
 
   final String url;
   final String filename;
-  final String name;
-  final int sizeMB;
+  final String displayName;
+  final String size;
+  final String licenseUrl;
   final bool needsAuth;
-  final PreferredBackend backend;
+  final PreferredBackend preferredBackend;
   final ModelType modelType;
-  final bool hasImage;
-  final bool hasFunctionCalls;
+  final double temperature;
+  final int topK;
+  final double topP;
+  final bool supportImage;
+  final int maxTokens;
+  final int? maxNumImages;
+  final bool supportsFunctionCalls;
   final bool isThinking;
 
   const AIModel({
     required this.url,
     required this.filename,
-    required this.name,
-    required this.sizeMB,
+    required this.displayName,
+    required this.size,
+    required this.licenseUrl,
     required this.needsAuth,
-    required this.backend,
+    required this.preferredBackend,
     required this.modelType,
-    this.hasImage = false,
-    this.hasFunctionCalls = false,
+    required this.temperature,
+    required this.topK,
+    required this.topP,
+    this.supportImage = false,
+    this.maxTokens = 1024,
+    this.maxNumImages,
+    this.supportsFunctionCalls = false,
     this.isThinking = false,
   });
 
-  String get sizeDisplay => sizeMB >= 1024 
-      ? '${(sizeMB / 1024).toStringAsFixed(1)}GB' 
-      : '${sizeMB}MB';
+  String get sizeDisplay => size;
+  
+  // برای سازگاری با کدهای قدیم
+  bool get hasImage => supportImage;
+  bool get hasFunctionCalls => supportsFunctionCalls;
+  PreferredBackend get backend => preferredBackend;
+  String get name => displayName;
 }
 
 // ========== Chat Message ==========
@@ -171,4 +298,40 @@ class DownloadProgress {
     required this.status,
     this.error,
   });
+}
+
+// ========== Worker Log ==========
+enum WorkerLogLevel { info, success, warning, error , token }
+
+class WorkerLog {
+  final String message;
+  final WorkerLogLevel level;
+  final DateTime timestamp;
+  final Map<String, dynamic>? data;
+
+  WorkerLog({
+    required this.message,
+    required this.level,
+    DateTime? timestamp,
+    this.data,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  String get levelIcon {
+    switch (level) {
+      case WorkerLogLevel.info:
+        return 'ℹ️';
+      case WorkerLogLevel.success:
+        return '✅';
+      case WorkerLogLevel.warning:
+        return '⚠️';
+      case WorkerLogLevel.error:
+        return '❌';
+      case WorkerLogLevel.token:
+        return '🔤';
+    }
+  }
+
+  String get timeString {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}';
+  }
 }

@@ -1,5 +1,5 @@
 name: distributed_ai_chat
-description: "Distributed AI Chat using Flutter Gemma"
+description: "Distributed AI Chat"
 publish_to: 'none'
 
 version: 1.0.0+1

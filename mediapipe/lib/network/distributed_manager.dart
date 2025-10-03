@@ -2,6 +2,7 @@
 import 'dart:async';
 import '../backend/ai_engine.dart';
 import '../shared/logger.dart';
+import '../shared/models.dart';
 import 'routing_client.dart';
 import 'worker.dart';
 
@@ -16,6 +17,9 @@ class DistributedManager {
 
   bool get isEnabled => _isEnabled;
   bool get isWorkerRunning => _worker?.isRunning ?? false;
+  
+  // Stream لاگ‌های Worker
+  Stream<WorkerLog>? get workerLogStream => _worker?.logStream;
 
   Future<void> enable() async {
     if (_isEnabled) return;

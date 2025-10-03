@@ -31,6 +31,7 @@ class _ChatScreenState extends State<ChatScreen> {
   StreamSubscription<ChatState>? _stateSub;
   
   bool _isDistributed = false;
+  bool _showWorkerLogs = false;
   ChatState _state = ChatState(messages: []);
 
   @override
@@ -59,7 +60,6 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final client = RoutingClient(AppConfig.routingServerUrl);
       _distributedManager = DistributedManager(widget.engine, client);
-      // Don't auto-enable, let user choose
     } catch (e) {
       // Ignore - just continue without distributed mode
     }
@@ -131,7 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.model.name, style: const TextStyle(fontSize: 16)),
+            Text(widget.model.displayName, style: const TextStyle(fontSize: 16)),
             Row(
               children: [
                 Text(
@@ -148,6 +148,21 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Colors.grey[900],
         actions: [
+          // دکمه نمایش لاگ‌ها (فقط در حالت توزیع‌شده)
+          if (_isDistributed && _distributedManager?.isWorkerRunning == true)
+            IconButton(
+              icon: Icon(
+                _showWorkerLogs ? Icons.visibility_off : Icons.terminal,
+                color: _showWorkerLogs ? Colors.green : Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  _showWorkerLogs = !_showWorkerLogs;
+                });
+              },
+              tooltip: _showWorkerLogs ? 'مخفی کردن لاگ‌ها' : 'نمایش لاگ‌های Worker',
+            ),
+          
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
@@ -204,6 +219,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           if (_state.isGenerating)
             TypingIndicator(onStop: _controller.stop),
+          
+          // نمایش لاگ‌های Worker
+          if (_showWorkerLogs && _distributedManager?.workerLogStream != null)
+            WorkerLogViewer(logStream: _distributedManager!.workerLogStream),
+          
           _buildInputArea(),
         ],
       ),

@@ -1,10 +1,9 @@
-// frontend/screens/download_screen.dart - طراحی مدرن (بهینه‌شده برای عملکرد)
+// frontend/screens/download_screen.dart - نسخه بازنویسی شده با API جدید
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/models.dart';
 import '../../download/model_store.dart';
-import '../../download/download_manager.dart';
 import '../../backend/ai_engine.dart';
 import '../../backend/engine_factory.dart';
 import '../../shared/logger.dart';
@@ -20,9 +19,8 @@ class DownloadScreen extends StatefulWidget {
 
 class _DownloadScreenState extends State<DownloadScreen>
     with TickerProviderStateMixin {
-  final _store = ModelStore();
+  final _store = ModelStore(); // Singleton instance
   final _tokenController = TextEditingController();
-  DownloadManager? _downloadManager;
   StreamSubscription<DownloadProgress>? _progressSub;
   AIEngine? _engine;
   late AnimationController _animController;
@@ -35,8 +33,8 @@ class _DownloadScreenState extends State<DownloadScreen>
   String _token = '';
   double _progress = 0.0;
   String _status = '';
-  String _speed = '';
   DownloadStatus _downloadStatus = DownloadStatus.idle;
+  bool _isDownloading = false;
 
   @override
   void initState() {
@@ -64,7 +62,6 @@ class _DownloadScreenState extends State<DownloadScreen>
   @override
   void dispose() {
     _progressSub?.cancel();
-    _downloadManager?.dispose();
     _tokenController.dispose();
     _animController.dispose();
     _progressAnimController.dispose();
@@ -76,9 +73,11 @@ class _DownloadScreenState extends State<DownloadScreen>
     _token = await _store.loadToken(widget.model.name) ?? '';
     _tokenController.text = _token;
     _needsDownload = !(await _store.isModelDownloaded(widget.model, _token));
+    
     if (!_needsDownload) {
       await _initEngine();
     }
+    
     if (mounted) {
       setState(() {
         _status = _needsDownload ? 'آماده برای دانلود' : 'مدل آماده است';
@@ -91,17 +90,26 @@ class _DownloadScreenState extends State<DownloadScreen>
     try {
       _engine = EngineFactory.createDefault();
       if (_engine == null) return;
-      final modelPath = await _store.createDownloadManager(widget.model, _token).getFilePath();
+      
+      final modelPath = await _store.getFilePath(widget.model.filename);
       final config = _buildConfig();
+      
+      Log.i('Initializing engine with path: $modelPath', 'DownloadScreen');
       await _engine!.init(modelPath, config);
+      
       final isReady = await _engine!.healthCheck();
       if (mounted) {
         setState(() {
           _isEngineReady = isReady;
         });
       }
+      
+      Log.s('Engine ready: $isReady', 'DownloadScreen');
     } catch (e) {
       Log.e('Engine init failed', 'DownloadScreen', e);
+      if (mounted) {
+        _showSnackbar('خطا در بارگذاری مدل: $e', Colors.red);
+      }
     }
   }
 
@@ -123,9 +131,12 @@ class _DownloadScreenState extends State<DownloadScreen>
   Future<void> _saveToken() async {
     final token = _tokenController.text.trim();
     if (token.isEmpty) return;
+    
     HapticFeedback.lightImpact();
     await _store.saveToken(widget.model.name, token);
+    _token = token;
     await _init();
+    
     if (mounted) {
       setState(() => _showTokenField = false);
     }
@@ -140,63 +151,141 @@ class _DownloadScreenState extends State<DownloadScreen>
       _showSnackbar('لطفاً ابتدا توکن را وارد کنید', Colors.orange);
       return;
     }
+
+    if (_isDownloading) {
+      _showSnackbar('دانلود در حال انجام است', Colors.orange);
+      return;
+    }
+
     HapticFeedback.mediumImpact();
-    _downloadManager = _store.createDownloadManager(widget.model, _token);
-    _progressSub = _downloadManager!.progressStream.listen((progress) {
-      if (mounted) {
-        setState(() {
-          _progress = progress.percentage;
-          _downloadStatus = progress.status;
-          if (progress.speedBps > 0) {
-            final speedMB = (progress.speedBps / 1024 / 1024);
-            _speed = '${speedMB.toStringAsFixed(1)} MB/s';
-            _status = 'در حال دانلود...';
-          } else {
-            _status = 'در حال دانلود...';
-          }
-        });
-      }
-      if (progress.status == DownloadStatus.completed) {
-        _progressAnimController.forward();
-        _needsDownload = false;
-        _initEngine();
-        _showSnackbar('دانلود کامل شد', Colors.green);
-      }
+    
+    setState(() {
+      _isDownloading = true;
+      _downloadStatus = DownloadStatus.downloading;
+      _status = 'شروع دانلود...';
+      _progress = 0.0;
     });
+
+    // Cancel any existing subscription
+    await _progressSub?.cancel();
+    
     try {
-      await _downloadManager!.start();
+      Log.i('Starting download for ${widget.model.name}', 'DownloadScreen');
+      
+      _progressSub = _store.downloadModel(widget.model, _token).listen(
+        (progress) {
+          if (!mounted) return;
+          
+          setState(() {
+            _progress = progress.percentage;
+            _downloadStatus = progress.status;
+            
+            if (progress.status == DownloadStatus.downloading) {
+              _status = 'در حال دانلود... ${_progress.toStringAsFixed(1)}%';
+            } else if (progress.status == DownloadStatus.error) {
+              _status = 'خطا در دانلود';
+              _isDownloading = false;
+            }
+          });
+          
+          if (progress.status == DownloadStatus.completed) {
+            _onDownloadCompleted();
+          } else if (progress.status == DownloadStatus.error) {
+            _onDownloadError(progress.error ?? 'خطای نامشخص');
+          }
+        },
+        onError: (error) {
+          Log.e('Download stream error', 'DownloadScreen', error);
+          _onDownloadError(error.toString());
+        },
+        onDone: () {
+          Log.i('Download stream completed', 'DownloadScreen');
+          if (_downloadStatus != DownloadStatus.completed) {
+            _onDownloadCompleted();
+          }
+        },
+        cancelOnError: false,
+      );
     } catch (e) {
-      _showSnackbar('خطا: $e', Colors.red);
+      Log.e('Failed to start download', 'DownloadScreen', e);
+      _onDownloadError(e.toString());
     }
   }
 
-  Future<void> _pauseDownload() async {
-    HapticFeedback.lightImpact();
-    await _downloadManager?.pause();
+  void _onDownloadCompleted() {
+    if (!mounted) return;
+    
+    setState(() {
+      _progress = 100.0;
+      _downloadStatus = DownloadStatus.completed;
+      _status = 'دانلود کامل شد';
+      _isDownloading = false;
+      _needsDownload = false;
+    });
+    
+    _progressAnimController.forward();
+    _showSnackbar('دانلود کامل شد', Colors.green);
+    _initEngine();
   }
 
-  Future<void> _resumeDownload() async {
+  void _onDownloadError(String error) {
+    if (!mounted) return;
+    
+    setState(() {
+      _downloadStatus = DownloadStatus.error;
+      _status = 'خطا در دانلود';
+      _isDownloading = false;
+    });
+    
+    _showSnackbar('خطا: $error', Colors.red);
+  }
+
+  Future<void> _cancelDownload() async {
     HapticFeedback.lightImpact();
-    await _downloadManager?.start();
+    
+    await _progressSub?.cancel();
+    _progressSub = null;
+    
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _downloadStatus = DownloadStatus.idle;
+        _status = 'دانلود لغو شد';
+        _progress = 0.0;
+      });
+    }
+    
+    _showSnackbar('دانلود لغو شد', Colors.orange);
   }
 
   Future<void> _deleteModel() async {
     HapticFeedback.mediumImpact();
+    
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => _buildDeleteDialog(),
     );
+    
     if (confirmed == true) {
-      await _downloadManager?.delete();
-      if (mounted) {
-        setState(() {
-          _needsDownload = true;
-          _progress = 0;
-          _downloadStatus = DownloadStatus.idle;
-        });
+      try {
+        await _store.deleteModel(widget.model);
+        
+        if (mounted) {
+          setState(() {
+            _needsDownload = true;
+            _progress = 0;
+            _downloadStatus = DownloadStatus.idle;
+            _isEngineReady = false;
+            _status = 'آماده برای دانلود';
+          });
+        }
+        
+        _showSnackbar('مدل حذف شد', Colors.red);
+      } catch (e) {
+        Log.e('Failed to delete model', 'DownloadScreen', e);
+        _showSnackbar('خطا در حذف: $e', Colors.red);
       }
-      _showSnackbar('مدل حذف شد', Colors.red);
     }
   }
 
@@ -205,6 +294,7 @@ class _DownloadScreenState extends State<DownloadScreen>
       _showSnackbar('مدل آماده نیست', Colors.orange);
       return;
     }
+    
     HapticFeedback.lightImpact();
     Navigator.pushReplacement(
       context,
@@ -357,7 +447,6 @@ class _DownloadScreenState extends State<DownloadScreen>
     );
   }
 
-  // ✅ بهینه‌شده: بدون BackdropFilter
   Widget _buildModelCard() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -650,6 +739,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   Widget _buildStatusCard() {
     final statusColor = _getStatusColor();
     final statusIcon = _getStatusIcon();
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -688,14 +778,6 @@ class _DownloadScreenState extends State<DownloadScreen>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (_speed.isNotEmpty)
-                  Text(
-                    _speed,
-                    style: TextStyle(
-                      color: statusColor.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -778,36 +860,22 @@ class _DownloadScreenState extends State<DownloadScreen>
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              if (_downloadStatus == DownloadStatus.downloading)
-                Expanded(
-                  child: _buildActionButton(
-                    'توقف',
-                    Icons.pause_rounded,
-                    Colors.orange,
-                    _pauseDownload,
-                  ),
-                ),
-              if (_downloadStatus == DownloadStatus.paused)
-                Expanded(
-                  child: _buildActionButton(
-                    'ادامه',
-                    Icons.play_arrow_rounded,
-                    Colors.green,
-                    _resumeDownload,
-                  ),
-                ),
-            ],
-          ),
+          if (_isDownloading) ...[
+            const SizedBox(height: 16),
+            _buildActionButton(
+              'لغو دانلود',
+              Icons.stop_rounded,
+              Colors.red,
+              _cancelDownload,
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildActions() {
-    if (_needsDownload && _downloadStatus == DownloadStatus.idle) {
+    if (_needsDownload && !_isDownloading) {
       return _buildActionButton(
         'شروع دانلود',
         Icons.download_rounded,
@@ -816,7 +884,8 @@ class _DownloadScreenState extends State<DownloadScreen>
         isLarge: true,
       );
     }
-    if (!_needsDownload) {
+    
+    if (!_needsDownload && !_isDownloading) {
       return Column(
         children: [
           _buildActionButton(
@@ -837,6 +906,7 @@ class _DownloadScreenState extends State<DownloadScreen>
         ],
       );
     }
+    
     return const SizedBox.shrink();
   }
 
@@ -914,7 +984,6 @@ class _DownloadScreenState extends State<DownloadScreen>
     );
   }
 
-  // ✅ بهینه‌شده: بدون BackdropFilter
   Widget _buildDeleteDialog() {
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -955,7 +1024,7 @@ class _DownloadScreenState extends State<DownloadScreen>
               const SizedBox(height: 16),
               const Text(
                 'حذف مدل',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -1004,7 +1073,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                       ),
                       child: const Text(
                         'حذف',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),

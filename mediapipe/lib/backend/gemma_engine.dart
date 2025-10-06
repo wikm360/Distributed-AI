@@ -1,10 +1,10 @@
-// backend/gemma_engine.dart - پیاده‌سازی Gemma
+// backend/gemma_engine.dart - پیاده‌سازی Gemma با API جدید
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
-import 'package:flutter_gemma/pigeon.g.dart';
+// import 'package:flutter_gemma/mobile/flutter_gemma_mobile.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter_gemma/core/model.dart';
 import 'ai_engine.dart';
 import '../shared/logger.dart';
 
@@ -29,15 +29,29 @@ class GemmaEngine implements AIEngine {
     try {
       Log.i('Initializing Gemma...', 'GemmaEngine');
       
-      // Set model path
-      if (!await _gemma.modelManager.isModelInstalled) {
-        final path = kIsWeb
-            ? modelPath
-            : '${(await getApplicationDocumentsDirectory()).path}/${_getFilename(modelPath)}';
-        await _gemma.modelManager.setModelPath(path);
+      // Apply Android path correction
+      String correctedPath = modelPath;
+      if (!kIsWeb && Platform.isAndroid) {
+        if (modelPath.contains('/data/user/0/')) {
+          correctedPath = modelPath.replaceFirst('/data/user/0/', '/data/data/');
+        }
+        // Also ensure we're using the full absolute path
+        if (!correctedPath.startsWith('/')) {
+          final directory = await getApplicationDocumentsDirectory();
+          final baseDir = directory.path.contains('/data/user/0/')
+              ? directory.path.replaceFirst('/data/user/0/', '/data/data/')
+              : directory.path;
+          correctedPath = '$baseDir/${_getFilename(modelPath)}';
+        }
       }
 
-      // Create model
+      Log.i('Model path: $correctedPath', 'GemmaEngine');
+
+      // Ensure the active model is set in the manager before creating the model
+      final manager = _gemma.modelManager;
+      await manager.setModelPath(correctedPath);
+
+      // Create model with updated parameters
       _model = await _gemma.createModel(
         modelType: config['modelType'] ?? ModelType.gemmaIt,
         preferredBackend: config['backend'] ?? PreferredBackend.gpu,
@@ -61,7 +75,7 @@ class GemmaEngine implements AIEngine {
       );
 
       _isReady = true;
-      Log.s('Gemma initialized', 'GemmaEngine');
+      Log.s('Gemma initialized successfully', 'GemmaEngine');
     } catch (e) {
       _isReady = false;
       Log.e('Gemma init failed', 'GemmaEngine', e);

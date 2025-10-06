@@ -47,9 +47,18 @@ android {
     }
 
     buildTypes {
+        // getByName("release") {
+        //     isMinifyEnabled = false
+        //     isShrinkResources = false
+        //     signingConfig = signingConfigs.getByName("release")
+        // }
         getByName("release") {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("release")
         }
         getByName("debug") {

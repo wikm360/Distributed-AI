@@ -12,10 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
   
-  llama_cpp_dart: ^0.1.0
+  # llama_cpp_dart: ^0.1.0
   
   # Flutter Gemma for Edge AI
-  flutter_gemma: ^0.10.4
+  flutter_gemma: ^0.11.3
   background_downloader: ^9.2.3
   
   # Core dependencies

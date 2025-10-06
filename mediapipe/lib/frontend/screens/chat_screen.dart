@@ -1,6 +1,7 @@
-// frontend/screens/chat_screen.dart - صفحه چت
+// frontend/screens/chat_screen.dart - طراحی مدرن (بهینه‌شده برای عملکرد)
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../backend/ai_engine.dart';
 import '../../network/distributed_manager.dart';
 import '../../network/routing_client.dart';
@@ -12,7 +13,6 @@ import '../../config.dart';
 class ChatScreen extends StatefulWidget {
   final AIEngine engine;
   final AIModel model;
-
   const ChatScreen({
     super.key,
     required this.engine,
@@ -23,13 +23,14 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late final ChatController _controller;
   late final TextEditingController _messageController;
-  
+  late final ScrollController _scrollController;
+  late final AnimationController _animController;
+  late final Animation<double> _fadeAnimation;
   DistributedManager? _distributedManager;
   StreamSubscription<ChatState>? _stateSub;
-  
   bool _isDistributed = false;
   bool _showWorkerLogs = false;
   ChatState _state = ChatState(messages: []);
@@ -39,21 +40,41 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _controller = ChatController(widget.engine);
     _messageController = TextEditingController();
-    
+    _scrollController = ScrollController();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeInOut,
+    );
+    _animController.forward();
     _stateSub = _controller.stateStream.listen((state) {
-      setState(() => _state = state);
+      if (mounted) {
+        setState(() => _state = state);
+        _scrollToBottom();
+      }
     });
-    
     _initDistributed();
+    // اضافه کردن Listener برای به‌روزرسانی UI هنگام تایپ
+    _messageController.addListener(_onMessageChanged);
   }
 
   @override
   void dispose() {
     _stateSub?.cancel();
+    _messageController.removeListener(_onMessageChanged); // حذف Listener صحیح
     _messageController.dispose();
+    _scrollController.dispose();
+    _animController.dispose();
     _controller.dispose();
     _distributedManager?.dispose();
     super.dispose();
+  }
+
+  void _onMessageChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _initDistributed() async {
@@ -67,7 +88,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _toggleDistributed() async {
     if (_distributedManager == null) return;
-
+    HapticFeedback.mediumImpact();
     try {
       if (_isDistributed) {
         await _distributedManager!.disable();
@@ -76,197 +97,633 @@ class _ChatScreenState extends State<ChatScreen> {
         await _distributedManager!.enable();
         _controller.setDistributedManager(_distributedManager);
       }
-      
-      setState(() {
-        _isDistributed = _distributedManager!.isEnabled;
-      });
-      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isDistributed ? 'حالت توزیع‌شده فعال شد' : 'حالت محلی فعال شد'),
-          ),
-        );
+        setState(() {
+          _isDistributed = _distributedManager!.isEnabled;
+        });
       }
+      _showSnackbar(
+        _isDistributed ? 'حالت توزیع‌شده فعال شد' : 'حالت محلی فعال شد',
+        _isDistributed ? Colors.green : Colors.blue,
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطا: $e')),
-        );
-      }
+      _showSnackbar('خطا: $e', Colors.red);
     }
   }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
-    
+    HapticFeedback.lightImpact();
     _messageController.clear();
-    
     try {
       await _controller.sendMessage(text);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطا: $e')),
-        );
-      }
+      _showSnackbar('خطا: $e', Colors.red);
     }
   }
 
+  void _stopGeneration() {
+    HapticFeedback.mediumImpact();
+    _controller.stop();
+  }
+
   Future<void> _clearChat() async {
+    HapticFeedback.mediumImpact();
     await _controller.clear();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('چت پاک شد')),
-      );
+    _showSnackbar('چت پاک شد', Colors.blue);
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
     }
+  }
+
+  void _showSnackbar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConfig.bgDark,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.model.displayName, style: const TextStyle(fontSize: 16)),
-            Row(
-              children: [
-                Text(
-                  _isDistributed ? 'چت توزیع‌شده' : 'چت محلی',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+      backgroundColor: const Color(0xFF0A0E27),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF0A0E27),
+              const Color(0xFF151B3D).withOpacity(0.6),
+              const Color(0xFF0A0E27),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: _buildChatArea(),
                 ),
-                const SizedBox(width: 8),
-                StatusIndicator(
-                  isActive: _isDistributed && (_distributedManager?.isWorkerRunning ?? false),
+              ),
+              if (_showWorkerLogs && _distributedManager?.workerLogStream != null)
+                WorkerLogViewer(logStream: _distributedManager!.workerLogStream),
+              _buildInputArea(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Container(
+        // ✅ حذف BackdropFilter — ریشه اصلی لگ
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.08),
+              Colors.white.withOpacity(0.02),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [
+                            Colors.blue.shade400,
+                            Colors.purple.shade400,
+                          ],
+                        ).createShader(bounds),
+                        child: Text(
+                          widget.model.displayName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: _isDistributed
+                                ? [Colors.green.shade600, Colors.teal.shade600]
+                                : [Colors.blue.shade600, Colors.indigo.shade600],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _isDistributed ? 'توزیع‌شده' : 'محلی',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (_isDistributed &&
+                          (_distributedManager?.isWorkerRunning ?? false))
+                        PulseAnimation(
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      if (_isDistributed &&
+                          (_distributedManager?.isWorkerRunning ?? false))
+                        const SizedBox(width: 6),
+                      Text(
+                        _isDistributed ? 'Worker فعال' : 'پردازش محلی',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (_isDistributed && _distributedManager?.isWorkerRunning == true)
+              IconButton(
+                icon: AnimatedRotation(
+                  turns: _showWorkerLogs ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.terminal,
+                    color: _showWorkerLogs
+                        ? Colors.green.shade400
+                        : Colors.white.withOpacity(0.6),
+                  ),
+                ),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _showWorkerLogs = !_showWorkerLogs);
+                },
+              ),
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: Colors.white.withOpacity(0.8),
+              ),
+              color: const Color(0xFF1A1F3A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 8,
+              onSelected: (value) {
+                switch (value) {
+                  case 'clear':
+                    _clearChat();
+                    break;
+                  case 'toggle':
+                    _toggleDistributed();
+                    break;
+                  case 'restart':
+                    Navigator.pushNamedAndRemoveUntil(
+                      context, '/', (r) => false,
+                    );
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                _buildMenuItem(
+                  'clear',
+                  Icons.refresh_rounded,
+                  'پاک کردن چت',
+                  Colors.blue,
+                ),
+                _buildMenuItem(
+                  'toggle',
+                  _isDistributed ? Icons.computer : Icons.cloud,
+                  _isDistributed ? 'حالت محلی' : 'حالت توزیع‌شده',
+                  Colors.purple,
+                  ),
+                _buildMenuItem(
+                  'restart',
+                  Icons.restart_alt_rounded,
+                  'شروع مجدد',
+                  Colors.orange,
                 ),
               ],
             ),
           ],
         ),
-        backgroundColor: Colors.grey[900],
-        actions: [
-          // دکمه نمایش لاگ‌ها (فقط در حالت توزیع‌شده)
-          if (_isDistributed && _distributedManager?.isWorkerRunning == true)
-            IconButton(
-              icon: Icon(
-                _showWorkerLogs ? Icons.visibility_off : Icons.terminal,
-                color: _showWorkerLogs ? Colors.green : Colors.white,
-              ),
-              onPressed: () {
-                setState(() {
-                  _showWorkerLogs = !_showWorkerLogs;
-                });
-              },
-              tooltip: _showWorkerLogs ? 'مخفی کردن لاگ‌ها' : 'نمایش لاگ‌های Worker',
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildMenuItem(
+    String value,
+    IconData icon,
+    String title,
+    Color color,
+  ) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-          
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'clear':
-                  _clearChat();
-                  break;
-                case 'toggle':
-                  _toggleDistributed();
-                  break;
-                case 'restart':
-                  Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'clear',
-                child: ListTile(
-                  leading: Icon(Icons.refresh),
-                  title: Text('پاک کردن چت'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'toggle',
-                child: ListTile(
-                  leading: Icon(_isDistributed ? Icons.computer : Icons.cloud),
-                  title: Text(_isDistributed ? 'حالت محلی' : 'حالت توزیع‌شده'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'restart',
-                child: ListTile(
-                  leading: Icon(Icons.restart_alt),
-                  title: Text('شروع مجدد'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white),
           ),
         ],
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildChatArea() {
+    if (_state.messages.isEmpty) {
+      return _buildEmptyState();
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(20),
+      itemCount: _state.messages.length,
+      itemBuilder: (context, index) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: Opacity(
+                opacity: value,
+                child: ModernMessageBubble(_state.messages[index]),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _state.messages.length,
-              itemBuilder: (context, index) {
-                return MessageBubble(_state.messages[index]);
-              },
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.blue.shade600.withOpacity(0.1),
+                  Colors.purple.shade600.withOpacity(0.1),
+                ],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  Colors.blue.shade400,
+                  Colors.purple.shade400,
+                ],
+              ).createShader(bounds),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 48,
+                color: Colors.white,
+              ),
             ),
           ),
-          if (_state.isGenerating)
-            TypingIndicator(onStop: _controller.stop),
-          
-          // نمایش لاگ‌های Worker
-          if (_showWorkerLogs && _distributedManager?.workerLogStream != null)
-            WorkerLogViewer(logStream: _distributedManager!.workerLogStream),
-          
-          _buildInputArea(),
+          const SizedBox(height: 16),
+          Text(
+            'شروع گفتگو با ${widget.model.displayName}',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'پیام خود را تایپ کنید',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.4),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildInputArea() {
+    final text = _messageController.text.trim();
+    final hasText = text.isNotEmpty;
+    final isGenerating = _state.isGenerating;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: AppConfig.cardDark,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.4),
+            Colors.black.withOpacity(0.6),
+          ],
+        ),
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey[800],
+                gradient: LinearGradient(
+                  colors: hasText && !isGenerating
+                      ? [
+                          Colors.blue.shade900.withOpacity(0.3),
+                          Colors.purple.shade900.withOpacity(0.3),
+                        ]
+                      : [
+                          Colors.white.withOpacity(0.05),
+                          Colors.white.withOpacity(0.02),
+                        ],
+                ),
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: hasText && !isGenerating
+                      ? Colors.blue.withOpacity(0.3)
+                      : Colors.white.withOpacity(0.1),
+                  width: 1.5,
+                ),
               ),
               child: TextField(
                 controller: _messageController,
-                onSubmitted: _state.isGenerating ? null : (_) => _sendMessage(),
-                enabled: !_state.isGenerating,
-                style: const TextStyle(color: Colors.white),
+                enabled: !isGenerating,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
                 maxLines: 4,
                 minLines: 1,
-                decoration: const InputDecoration(
-                  hintText: 'پیام خود را تایپ کنید...',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                textInputAction: TextInputAction.send,
+                onSubmitted: (value) {
+                  if (!isGenerating && hasText) {
+                    _sendMessage();
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: isGenerating
+                      ? 'در حال تولید پاسخ...'
+                      : 'پیام خود را تایپ کنید...',
+                  hintStyle: TextStyle(
+                    color: Colors.white.withOpacity(0.3),
+                    fontSize: 14,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   border: InputBorder.none,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          FloatingActionButton(
-            onPressed: _state.isGenerating ? null : _sendMessage,
-            backgroundColor: _state.isGenerating ? Colors.grey : Colors.blue,
-            mini: true,
-            child: const Icon(Icons.send, size: 22),
+          const SizedBox(width: 12),
+          if (isGenerating)
+            _buildStopButton()
+          else
+            _buildSendButton(hasText: hasText),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSendButton({required bool hasText}) {
+    return AnimatedScale(
+      scale: hasText ? 1.0 : 0.9,
+      duration: const Duration(milliseconds: 200),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: hasText
+                ? [Colors.blue.shade600, Colors.purple.shade600]
+                : [Colors.grey.shade800, Colors.grey.shade900],
+          ),
+          shape: BoxShape.circle,
+          boxShadow: hasText
+              ? [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: hasText ? _sendMessage : null,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              child: Icon(
+                Icons.send_rounded,
+                color: Colors.white.withOpacity(hasText ? 0.9 : 0.3),
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStopButton() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.red.shade600,
+            Colors.orange.shade600,
+          ],
+        ),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: _stopGeneration,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            child: Icon(
+              Icons.stop_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========== PulseAnimation ==========
+class PulseAnimation extends StatefulWidget {
+  final Widget child;
+  const PulseAnimation({super.key, required this.child});
+
+  @override
+  State<PulseAnimation> createState() => _PulseAnimationState();
+}
+
+class _PulseAnimationState extends State<PulseAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _animation.value,
+          child: widget.child,
+        );
+      },
     );
   }
 }

@@ -13,10 +13,14 @@ import '../../config.dart';
 class ChatScreen extends StatefulWidget {
   final AIEngine engine;
   final AIModel model;
+  final String modelPath;
+  final Map<String, dynamic> modelConfig;
   const ChatScreen({
     super.key,
     required this.engine,
     required this.model,
+    required this.modelPath,
+    required this.modelConfig,
   });
 
   @override
@@ -32,13 +36,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   DistributedManager? _distributedManager;
   StreamSubscription<ChatState>? _stateSub;
   bool _isDistributed = false;
-  bool _showWorkerLogs = false;
   ChatState _state = ChatState(messages: []);
 
   @override
   void initState() {
     super.initState();
     _controller = ChatController(widget.engine);
+    // Set model configuration for reset functionality
+    _controller.setModelConfig(widget.modelPath, widget.modelConfig);
     _messageController = TextEditingController();
     _scrollController = ScrollController();
     _animController = AnimationController(
@@ -70,6 +75,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     _animController.dispose();
     _controller.dispose();
     _distributedManager?.dispose();
+    // Dispose the engine when leaving the chat screen
+    widget.engine.dispose();
     super.dispose();
   }
 
@@ -130,8 +137,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Future<void> _clearChat() async {
     HapticFeedback.mediumImpact();
-    await _controller.clear();
-    _showSnackbar('چت پاک شد', Colors.blue);
+    await _controller.clearAndReset();
+    _showSnackbar('چت پاک شد و مدل بازنشانی شد', Colors.blue);
   }
 
   void _scrollToBottom() {
@@ -187,8 +194,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   child: _buildChatArea(),
                 ),
               ),
-              if (_showWorkerLogs && _distributedManager?.workerLogStream != null)
-                WorkerLogViewer(logStream: _distributedManager!.workerLogStream),
               _buildInputArea(),
             ],
           ),
@@ -229,7 +234,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         child: Row(
           children: [
             GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: () async {
+                // Dispose engine before going back
+                await widget.engine.dispose();
+                if (mounted) Navigator.pop(context);
+              },
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -336,23 +345,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-            if (_isDistributed && _distributedManager?.isWorkerRunning == true)
-              IconButton(
-                icon: AnimatedRotation(
-                  turns: _showWorkerLogs ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    Icons.terminal,
-                    color: _showWorkerLogs
-                        ? Colors.green.shade400
-                        : Colors.white.withOpacity(0.6),
-                  ),
-                ),
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _showWorkerLogs = !_showWorkerLogs);
-                },
-              ),
             PopupMenuButton<String>(
               icon: Icon(
                 Icons.more_vert_rounded,
@@ -371,11 +363,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   case 'toggle':
                     _toggleDistributed();
                     break;
-                  case 'restart':
-                    Navigator.pushNamedAndRemoveUntil(
-                      context, '/', (r) => false,
-                    );
-                    break;
                 }
               },
               itemBuilder: (context) => [
@@ -391,12 +378,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   _isDistributed ? 'حالت محلی' : 'حالت توزیع‌شده',
                   Colors.purple,
                   ),
-                _buildMenuItem(
-                  'restart',
-                  Icons.restart_alt_rounded,
-                  'شروع مجدد',
-                  Colors.orange,
-                ),
               ],
             ),
           ],
@@ -708,11 +689,11 @@ class _PulseAnimationState extends State<PulseAnimation>
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   _controller.dispose();
+  //   super.dispose();
+  // }
 
   @override
   Widget build(BuildContext context) {

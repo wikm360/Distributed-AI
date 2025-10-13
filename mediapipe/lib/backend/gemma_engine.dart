@@ -130,7 +130,12 @@ class GemmaEngine implements AIEngine {
   Future<void> stop() async {
     _isGenerating = false;
     if (_model != null) {
-      await _recreateChat();
+      try {
+        await _model!.session?.stopGeneration();
+        Log.i('Generation stopped successfully', 'GemmaEngine');
+      } catch (e) {
+        Log.e('Failed to stop generation', 'GemmaEngine', e);
+      }
     }
   }
 
@@ -139,6 +144,19 @@ class GemmaEngine implements AIEngine {
     if (_model != null) {
       await _recreateChat();
     }
+  }
+
+  /// Completely disposes the model and recreates it from scratch
+  Future<void> resetModel(String modelPath, Map<String, dynamic> config) async {
+    Log.i('Resetting Gemma model completely', 'GemmaEngine');
+    
+    // First dispose everything
+    await dispose();
+    
+    // Then reinitialize
+    await init(modelPath, config);
+    
+    Log.s('Gemma model reset successfully', 'GemmaEngine');
   }
 
   Future<void> _recreateChat() async {

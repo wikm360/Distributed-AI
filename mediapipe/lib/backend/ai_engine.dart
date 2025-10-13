@@ -11,4 +11,7 @@ abstract class AIEngine {
   Future<void> clearHistory();
   Future<void> dispose();
   Future<bool> healthCheck();
+  
+  /// Completely resets the model (disposes and reinitializes)
+  Future<void> resetModel(String modelPath, Map<String, dynamic> config);
 }

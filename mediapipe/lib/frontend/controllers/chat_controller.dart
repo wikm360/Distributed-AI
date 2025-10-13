@@ -13,6 +13,10 @@ class ChatController {
   bool _isGenerating = false;
   bool _isDistributed = false;
   
+  // Store model configuration for reset
+  String? _modelPath;
+  Map<String, dynamic>? _modelConfig;
+  
   final StreamController<ChatState> _stateController = 
       StreamController<ChatState>.broadcast();
 
@@ -27,6 +31,11 @@ class ChatController {
     _distributedManager = manager;
     _isDistributed = manager != null && manager.isEnabled;
     _emitState();
+  }
+
+  void setModelConfig(String modelPath, Map<String, dynamic> config) {
+    _modelPath = modelPath;
+    _modelConfig = config;
   }
 
   Future<void> sendMessage(String text) async {
@@ -84,6 +93,32 @@ class ChatController {
     if (_isGenerating) await stop();
     _messages.clear();
     await _engine.clearHistory();
+    _emitState();
+  }
+
+  /// Clears chat and completely resets the model
+  Future<void> clearAndReset() async {
+    if (_isGenerating) await stop();
+    
+    // Clear messages immediately for UI responsiveness
+    _messages.clear();
+    _emitState();
+    
+    // Reset the model if configuration is available
+    if (_modelPath != null && _modelConfig != null) {
+      try {
+        await _engine.resetModel(_modelPath!, _modelConfig!);
+        Log.i('Model reset successfully', 'ChatController');
+      } catch (e) {
+        Log.e('Model reset failed', 'ChatController', e);
+        // Fallback to regular clear
+        await _engine.clearHistory();
+      }
+    } else {
+      // Fallback to regular clear if no config available
+      await _engine.clearHistory();
+    }
+    
     _emitState();
   }
 

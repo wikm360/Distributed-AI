@@ -2,6 +2,76 @@
 import 'package:flutter_gemma/core/model.dart';
 import 'package:flutter_gemma/pigeon.g.dart';
 
+// ========== Embedding Models ==========
+enum EmbeddingModel {
+  embeddingGemma1024(
+    url: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/embeddinggemma-300M_seq1024_mixed-precision.tflite',
+    tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/sentencepiece.model',
+    filename: 'embeddinggemma-300M_seq1024_mixed-precision.tflite',
+    tokenizerFilename: 'sentencepiece.model',
+    displayName: 'EmbeddingGemma 1024',
+    size: '183MB',
+    dimension: 1024,
+    needsAuth: true,
+  ),
+
+  embeddingGemma2048(
+    url: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/embeddinggemma-300M_seq2048_mixed-precision.tflite',
+    tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/sentencepiece.model',
+    filename: 'embeddinggemma-300M_seq2048_mixed-precision.tflite',
+    tokenizerFilename: 'sentencepiece.model',
+    displayName: 'EmbeddingGemma 2048',
+    size: '196MB',
+    dimension: 2048,
+    needsAuth: true,
+  ),
+
+  embeddingGemma256(
+    url: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/embeddinggemma-300M_seq256_mixed-precision.tflite',
+    tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/sentencepiece.model',
+    filename: 'embeddinggemma-300M_seq256_mixed-precision.tflite',
+    tokenizerFilename: 'sentencepiece.model',
+    displayName: 'EmbeddingGemma 256',
+    size: '179MB',
+    dimension: 256,
+    needsAuth: true,
+  ),
+
+  embeddingGemma512(
+    url: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/embeddinggemma-300M_seq512_mixed-precision.tflite',
+    tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/sentencepiece.model',
+    filename: 'embeddinggemma-300M_seq512_mixed-precision.tflite',
+    tokenizerFilename: 'sentencepiece.model',
+    displayName: 'EmbeddingGemma 512',
+    size: '179MB',
+    dimension: 512,
+    needsAuth: true,
+  );
+
+  final String url;
+  final String tokenizerUrl;
+  final String filename;
+  final String tokenizerFilename;
+  final String displayName;
+  final String size;
+  final int dimension;
+  final bool needsAuth;
+
+  /// Constructor
+  const EmbeddingModel({
+    required this.url,
+    required this.tokenizerUrl,
+    required this.filename,
+    required this.tokenizerFilename,
+    required this.displayName,
+    required this.size,
+    required this.dimension,
+    required this.needsAuth,
+  });
+
+}
+
+
 // ========== AI Models ==========
 enum AIModel {
   gemma3n_2B(

@@ -59,16 +59,6 @@ class _DownloadScreenState extends State<DownloadScreen>
     _init();
   }
 
-  @override
-  void dispose() {
-    _progressSub?.cancel();
-    _tokenController.dispose();
-    _animController.dispose();
-    _progressAnimController.dispose();
-    _engine?.dispose();
-    super.dispose();
-  }
-
   Future<void> _init() async {
     _token = await _store.loadToken(widget.model.name) ?? '';
     _tokenController.text = _token;
@@ -289,18 +279,28 @@ class _DownloadScreenState extends State<DownloadScreen>
     }
   }
 
-  void _navigateToChat() {
+  void _navigateToChat() async {
     if (_engine == null || !_isEngineReady) {
       _showSnackbar('مدل آماده نیست', Colors.orange);
       return;
     }
     
     HapticFeedback.lightImpact();
+    
+    // Get model path and configuration
+    final modelPath = await _store.getFilePath(widget.model.filename);
+    final modelConfig = _buildConfig();
+    
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            ChatScreen(engine: _engine!, model: widget.model),
+            ChatScreen(
+              engine: _engine!, 
+              model: widget.model,
+              modelPath: modelPath,
+              modelConfig: modelConfig,
+            ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,

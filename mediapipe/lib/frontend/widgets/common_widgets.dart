@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import '../../shared/models.dart';
+import 'dart:math' as math;
 
 // ========== Modern Message Bubble ==========
 class ModernMessageBubble extends StatefulWidget {
@@ -246,7 +247,7 @@ class MessageBubble extends ModernMessageBubble {
   const MessageBubble(super.message, {super.key});
 }
 
-// ========== Typing Animation ==========
+// ========== Smooth Looping Typing Animation ==========
 class TypingAnimation extends StatefulWidget {
   const TypingAnimation({super.key});
 
@@ -257,27 +258,14 @@ class TypingAnimation extends StatefulWidget {
 class _TypingAnimationState extends State<TypingAnimation>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late List<Animation<double>> _animations;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1400),
       vsync: this,
-    )..repeat();
-    _animations = List.generate(3, (index) {
-      return Tween(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-          parent: _controller,
-          curve: Interval(
-            index * 0.2,
-            0.6 + index * 0.2,
-            curve: Curves.easeInOut,
-          ),
-        ),
-      );
-    });
+    )..repeat(); // Loop بی‌وقفه
   }
 
   @override
@@ -286,33 +274,45 @@ class _TypingAnimationState extends State<TypingAnimation>
     super.dispose();
   }
 
+  // محاسبه مقیاس و شفافیت با استفاده از موج سینوسی
+  double _getDotValue(int index, double progress) {
+    // هر نقطه با یک فاز متفاوت شروع می‌شود (120 درجه فاصله)
+    final phase = (progress + (index * 0.333)) % 1.0;
+    // استفاده از sin برای ایجاد یک موج smooth
+    final wave = math.sin(phase * 2 * math.pi);
+    // تبدیل از [-1, 1] به [0, 1]
+    return (wave + 1) / 2;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (index) {
-        return AnimatedBuilder(
-          animation: _animations[index],
-          builder: (context, child) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final value = _getDotValue(index, _controller.value);
+            
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 2),
               child: Transform.scale(
-                scale: 0.5 + (_animations[index].value * 0.5),
+                scale: 0.6 + (value * 0.4), // مقیاس از 0.6 تا 1.0
                 child: Container(
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(
-                      0.3 + (_animations[index].value * 0.4)
+                      0.4 + (value * 0.5), // شفافیت از 0.4 تا 0.9
                     ),
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
             );
-          },
+          }),
         );
-      }),
+      },
     );
   }
 }

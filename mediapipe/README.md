@@ -165,9 +165,9 @@ If you use this project in your research:
 
 For questions, licensing inquiries, or collaboration opportunities:
 
-- **Email**: [Your Email]
-- **Repository**: [Repository URL]
-- **Issues**: [GitHub Issues URL]
+- **Email**: [mshafie575@gmail.com]
+- **Repository**: [https://github.com/wikm360/Distributed-AI]
+- **Issues**: [https://github.com/wikm360/Distributed-AI/issues]
 
 ## 🙏 Acknowledgments
 

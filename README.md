@@ -90,13 +90,13 @@ In a world dominated by centralized AI services, **DAI** brings a paradigm shift
 #### For Routing Server:
 - Python 3.9+
 - FastAPI
-- 2GB RAM VPS
+- 1GB RAM VPS
 
 ### Installation
 
 #### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/yourusername/distributed-ai-chat.git
+git clone https://github.com/wikm360/Distributed-AI.git
 cd distributed-ai-chat
 ```
 
@@ -117,6 +117,7 @@ python Routing.py
 #### 4️⃣ Download AI Models
 Open the app, navigate to Model Store, and download your preferred model:
 - Gemma 2B (Lightweight)
+- Qwen 2.5 0.5B (Lightweight)
 - Qwen 2.5 7B (Balanced)
 - Llama 3 8B (Advanced)
 
@@ -151,23 +152,39 @@ Open the app, navigate to Model Store, and download your preferred model:
 - [x] Worker nodes
 - [x] Load balancing
 
-### 🔄 Phase 3: P2P Decentralization (In Progress)
+### 🔄 Phase 3: RAG & Model Optimization (In Progress)
+- [x] RAG chunking strategy optimization
+- [x] Embedding model fine-tuning
+- [x] Vector DB indexing optimization
+- [ ] Model quantization & compression
+- [ ] Inference speed benchmarking
+- [ ] Memory footprint reduction
+
+### 🔄 Phase 4: Persian Language Support (In Progress)
+- [ ] Persian UI localization
+- [ ] Persian model training & fine-tuning
+- [ ] Farsi OCR support
+- [ ] Persian RAG knowledge bases
+- [ ] Right-to-left (RTL) UI adaptation
+- [ ] Persian NLP preprocessing
+
+### 🔄 Phase 5: P2P Decentralization (In Progress)
 - [ ] Serverless peer-to-peer routing
 - [ ] DHT-based node discovery
 - [ ] Blockchain-based trust system
 
-### 🔮 Phase 4: Federated Learning
+### 🔮 Phase 6: Federated Learning
 - [ ] On-device model fine-tuning
 - [ ] Gradient sharing (privacy-preserving)
 - [ ] FedAvg/FedProx implementation
 
-### 🎮 Phase 5: Gamification & Social
+### 🎮 Phase 7: Gamification & Social
 - [ ] Trust score system
 - [ ] User levels & missions
 - [ ] Topic-based collaboration spaces
 - [ ] Reputation rewards
 
-### 🛠️ Phase 6: Developer Ecosystem
+### 🛠️ Phase 8: Developer Ecosystem
 - [ ] Open SDK release
 - [ ] Plugin system
 - [ ] API documentation

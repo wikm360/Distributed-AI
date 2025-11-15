@@ -1,0 +1,207 @@
+PROPRIETARY RESEARCH LICENSE
+
+Copyright (c) 2024 [Mohammad Shafiee]
+All rights reserved.
+
+NOTICE: This software and associated documentation files (the "DAI") are 
+the proprietary and confidential property of the copyright holder. Unauthorized 
+copying, modification, distribution, or use of this Software, via any medium, 
+is strictly prohibited without the express written permission of the copyright 
+holder.
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+1. DEFINITIONS
+
+   "License" shall mean the terms and conditions for use, reproduction, and 
+   distribution as defined by this document.
+
+   "Licensor" shall mean the copyright owner or entity authorized by the 
+   copyright owner that is granting the License.
+
+   "Legal Entity" shall mean the union of the acting entity and all other 
+   entities that control, are controlled by, or are under common control with 
+   that entity.
+
+   "You" (or "Your") shall mean an individual or Legal Entity exercising 
+   permissions granted by this License.
+
+   "Source" form shall mean the preferred form for making modifications, 
+   including but not limited to software source code, documentation source, 
+   and configuration files.
+
+   "Object" form shall mean any form resulting from mechanical transformation 
+   or translation of a Source form, including but not limited to compiled 
+   object code, generated documentation, and conversions to other media types.
+
+   "Work" shall mean the work of authorship, whether in Source or Object form, 
+   made available under this License.
+
+   "Derivative Works" shall mean any work, whether in Source or Object form, 
+   that is based on (or derived from) the Work and for which the editorial 
+   revisions, annotations, elaborations, or other modifications represent, as 
+   a whole, an original work of authorship.
+
+   "Contribution" shall mean any work of authorship, including the original 
+   version of the Work and any modifications or additions to that Work or 
+   Derivative Works thereof, that is intentionally submitted to Licensor for 
+   inclusion in the Work by the copyright owner or by an individual or Legal 
+   Entity authorized to submit on behalf of the copyright owner.
+
+2. GRANT OF RESEARCH LICENSE
+
+   Subject to the terms and conditions of this License, Licensor hereby grants 
+   You a worldwide, royalty-free, non-exclusive, non-transferable, and 
+   non-sublicensable license to:
+
+   a) Use the Software for research, educational, and non-commercial purposes;
+   
+   b) Study and analyze the Software source code;
+   
+   c) Create Derivative Works for research and educational purposes only;
+   
+   d) Contribute modifications, improvements, bug fixes, or enhancements 
+      (collectively, "Contributions") back to the original repository through 
+      pull requests, issues, or other approved contribution mechanisms;
+   
+   e) Fork the repository for the sole purpose of creating Contributions 
+      that will be submitted back to the original repository.
+
+3. RESTRICTIONS
+
+   The following restrictions apply to Your use of the Software:
+
+   a) COMMERCIAL USE PROHIBITED: You may NOT use the Software, or any portion 
+      thereof, for any commercial purpose, including but not limited to:
+      - Selling, licensing, or sublicensing the Software;
+      - Using the Software in any product or service that is sold or 
+        commercialized;
+      - Using the Software to provide commercial services to third parties;
+      - Incorporating the Software into any commercial product or service.
+
+   b) DISTRIBUTION PROHIBITED: You may NOT distribute, publish, or make 
+      available the Software, or any portion thereof, to any third party, 
+      except as explicitly permitted in Section 2(e) for the purpose of 
+      Contributions.
+
+   c) NO STANDALONE COPIES: You may NOT create standalone copies, forks, or 
+      derivatives of the Software for distribution, publication, or 
+      independent use outside of the contribution process described in 
+      Section 2(e).
+
+   d) NO REVERSE ENGINEERING: You may NOT reverse engineer, decompile, or 
+      disassemble the Software, except to the extent that such activity is 
+      expressly permitted by applicable law notwithstanding this limitation.
+
+   e) NO REMOVAL OF NOTICES: You may NOT remove, alter, or obscure any 
+      proprietary notices, labels, or marks on the Software.
+
+   f) NO PATENT USE: This License does not grant You any patent rights.
+
+4. CONTRIBUTIONS
+
+   a) By submitting a Contribution to the Licensor, You grant the Licensor a 
+      perpetual, worldwide, non-exclusive, royalty-free, irrevocable license 
+      to use, reproduce, modify, distribute, and sublicense Your Contribution 
+      under any terms the Licensor chooses, including but not limited to 
+      proprietary licenses.
+
+   b) You represent that Your Contribution is Your original work, or that You 
+      have the right to grant the license described in Section 4(a).
+
+   c) You represent that Your Contribution does not violate any third-party 
+      rights, including but not limited to copyright, patent, trademark, or 
+      trade secret rights.
+
+   d) The Licensor reserves the right to accept, reject, or modify any 
+      Contribution at its sole discretion.
+
+   e) Contributions submitted to the Licensor become the property of the 
+      Licensor and may be used, modified, or distributed by the Licensor 
+      without further obligation to the contributor.
+
+5. INTELLECTUAL PROPERTY
+
+   a) The Software and all intellectual property rights therein are and shall 
+      remain the exclusive property of the Licensor.
+
+   b) This License does not grant You any rights to use the Licensor's 
+      trademarks, service marks, or trade names.
+
+   c) All rights not expressly granted are reserved by the Licensor.
+
+6. TERMINATION
+
+   This License and the rights granted hereunder will terminate automatically 
+   if You fail to comply with any term or condition of this License. Upon 
+   termination, You must immediately:
+
+   a) Cease all use of the Software;
+   
+   b) Destroy all copies of the Software in Your possession or control;
+   
+   c) Remove the Software from all systems and storage media under Your 
+      control.
+
+   Sections 4, 5, 7, 8, and 9 shall survive termination of this License.
+
+7. DISCLAIMER OF WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+   THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+   DEALINGS IN THE SOFTWARE.
+
+8. LIMITATION OF LIABILITY
+
+   IN NO EVENT AND UNDER NO LEGAL THEORY, WHETHER IN TORT (INCLUDING 
+   NEGLIGENCE), CONTRACT, OR OTHERWISE, UNLESS REQUIRED BY APPLICABLE LAW 
+   (SUCH AS DELIBERATE AND GROSSLY NEGLIGENT ACTS) OR AGREED TO IN WRITING, 
+   SHALL ANY LICENSOR BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY DIRECT, 
+   INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY CHARACTER 
+   ARISING AS A RESULT OF THIS LICENSE OR OUT OF THE USE OR INABILITY TO USE 
+   THE SOFTWARE (INCLUDING BUT NOT LIMITED TO DAMAGES FOR LOSS OF GOODWILL, 
+   WORK STOPPAGE, COMPUTER FAILURE OR MALFUNCTION, OR ANY AND ALL OTHER 
+   COMMERCIAL DAMAGES OR LOSSES), EVEN IF SUCH LICENSOR HAS BEEN ADVISED OF 
+   THE POSSIBILITY OF SUCH DAMAGES.
+
+9. GOVERNING LAW AND JURISDICTION
+
+   This License shall be governed by and construed in accordance with the laws 
+   of [Your Jurisdiction], without regard to its conflict of law provisions. 
+   Any disputes arising under or in connection with this License shall be 
+   subject to the exclusive jurisdiction of the courts of [Your Jurisdiction].
+
+10. SEVERABILITY
+
+    If any provision of this License is held to be invalid or unenforceable 
+    by a court, the remaining provisions of this License shall remain in full 
+    force and effect.
+
+11. ENTIRE AGREEMENT
+
+    This License constitutes the entire agreement between the parties with 
+    respect to the Software licensed hereunder and supersedes all prior or 
+    contemporaneous understandings, agreements, representations, and warranties, 
+    both written and oral, with respect to such Software.
+
+12. MODIFICATIONS TO LICENSE
+
+    The Licensor reserves the right to modify this License at any time. 
+    Continued use of the Software after such modifications shall constitute 
+    Your acceptance of such modifications.
+
+13. CONTACT INFORMATION
+
+    For questions regarding this License or to request permission for uses not 
+    covered by this License, please contact:
+
+    [Mohammad Shafiee]
+    [mshafie575@gmail.com]
+    [https://wikm.ir]
+
+END OF TERMS AND CONDITIONS
+

@@ -263,11 +263,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 | Model | Size | Speed (tokens/s) | RAM Usage |
 |-------|------|------------------|-----------|
-| Gemma 2B | 1.4GB | 15-20 | 2.5GB |
-| Qwen 2.5 7B | 4.1GB | 8-12 | 5GB |
-| Llama 3 8B | 4.7GB | 6-10 | 6GB |
 
-*Benchmarks on Snapdragon 8 Gen 2, Android 13*
+*Benchmarks Coming Soon*
 
 ---
 
@@ -308,7 +305,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Together, we're building the future of decentralized intelligence**
 
-[⭐ Star this repo](https://github.com/wikm360/Distributed-AI) • [🍴 Fork it](https://github.com/wikm360/Distributed-AI/fork)
+[⭐ Star this repo](https://github.com/wikm360/Distributed-AI)
 
 </div>
 

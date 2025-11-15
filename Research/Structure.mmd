@@ -1,0 +1,211 @@
+graph LR
+    %% Styling for main node
+    A[Distributed Collective AI Platform]:::main
+    classDef main fill:#1f77b4,stroke:#000,stroke-width:2px,color:#fff
+    classDef section fill:#6baed6,stroke:#000,stroke-width:1px,color:#fff
+    classDef subsection fill:#b3cde3,stroke:#000,stroke-width:1px
+    classDef suggestion fill:#ccebc5,stroke:#000,stroke-width:1px,stroke-dasharray: 5, 5
+
+    A --> B1[Core AI System]:::section
+    A --> B2[Networking & Routing]:::section
+    A --> B3[On-Device Runtime]:::section
+    A --> B4[Interaction Layer]:::section
+    A --> B5[Gamification]:::section
+    A --> B6[App Experience]:::section
+    A --> B7[Software Infra]:::section
+    A --> B8[AI Algorithms]:::section
+    A --> B9[Privacy & Ethics]:::section
+    A --> B10[Analytics]:::section
+    A --> B11[DevOps]:::section
+    A --> B12[Growth & Community]:::section
+
+    %% Core AI System
+    B1 --> C1_1[Local Models]:::subsection
+    B1 --> C1_2[RAG Engine]:::subsection
+    B1 --> C1_3[Federated Layer]:::subsection
+    B1 --> C1_4[Suggestion: Model Compression]:::suggestion
+    C1_1 --> D1_1_1[Lightweight Models]
+    C1_1 --> D1_1_2[On-Device Tuning]
+    C1_1 --> D1_1_3[Local Storage]
+    C1_1 --> D1_1_4[Model Sync]
+    C1_1 --> D1_1_5[Caching & Pruning]
+    C1_2 --> D1_2_1[Local Embeddings]
+    C1_2 --> D1_2_2[Vector DB]
+    C1_2 --> D1_2_3[Distributed RAG]
+    C1_2 --> D1_2_4[Knowledge Integration]
+    C1_2 --> D1_2_5[Privacy Embedding]
+    C1_3 --> D1_3_1[FedAvg/FL]
+    C1_3 --> D1_3_2[P2P/Client-Router]
+    C1_3 --> D1_3_3[Consensus Reasoning]
+    C1_3 --> D1_3_4[Trust Aggregation]
+    C1_3 --> D1_3_5[Cold Start]
+    C1_4 --> D1_4_1[Quantization]
+    C1_4 --> D1_4_2[Pruning Techniques]
+
+    %% Networking & Routing
+    B2 --> C2_1[Routing Server]:::subsection
+    B2 --> C2_2[P2P Layer]:::subsection
+    B2 --> C2_3[Security & Privacy]:::subsection
+    B2 --> C2_4[Suggestion: Load Balancing]:::suggestion
+    C2_1 --> D2_1_1[Query Routing]
+    C2_1 --> D2_1_2[Semantic Routing]
+    C2_1 --> D2_1_3[Result Aggregation]
+    C2_1 --> D2_1_4[Response Caching]
+    C2_1 --> D2_1_5[Participation Log]
+    C2_2 --> D2_2_1[WebRTC/gRPC]
+    C2_2 --> D2_2_2[Authentication]
+    C2_2 --> D2_2_3[Server Fallback]
+    C2_2 --> D2_2_4[Latency Tolerance]
+    C2_3 --> D2_3_1[Data Encryption]
+    C2_3 --> D2_3_2[Differential Privacy]
+    C2_3 --> D2_3_3[Poisoning Detection]
+    C2_3 --> D2_3_4[Model Sandboxing]
+    C2_4 --> D2_4_1[Dynamic Load Distribution]
+    C2_4 --> D2_4_2[Edge Caching]
+
+    %% On-Device Runtime
+    B3 --> C3_1[Android Runtime]:::subsection
+    B3 --> C3_2[Desktop Runtime]:::subsection
+    B3 --> C3_3[Suggestion: Cross-Platform]:::suggestion
+    C3_1 --> D3_1_1[Model Execution]
+    C3_1 --> D3_1_2[Background Worker]
+    C3_1 --> D3_1_3[Resource Optimization]
+    C3_1 --> D3_1_4[Async Tasks]
+    C3_1 --> D3_1_5[Eco AI Mode]
+    C3_2 --> D3_2_1[GPU Support]
+    C3_2 --> D3_2_2[Multi-Device Sync]
+    C3_2 --> D3_2_3[Debug Tools]
+    C3_3 --> D3_3_1[iOS Support]
+    C3_3 --> D3_3_2[WebAssembly Runtime]
+
+    %% Interaction Layer
+    B4 --> C4_1[Topic System]:::subsection
+    B4 --> C4_2[Private/Group Chats]:::subsection
+    B4 --> C4_3[Knowledge Sharing]:::subsection
+    B4 --> C4_4[Suggestion: Social Features]:::suggestion
+    C4_1 --> D4_1_1[Topic Creation]
+    C4_1 --> D4_1_2[Topic Search]
+    C4_1 --> D4_1_3[Similar Topics]
+    C4_1 --> D4_1_4[Co-Posting]
+    C4_1 --> D4_1_5[Add/Remove Users]
+    C4_1 --> D4_1_6[Contributor Display]
+    C4_1 --> D4_1_7[User Invitation]
+    C4_2 --> D4_2_1[Private Chats]
+    C4_2 --> D4_2_2[Model Collaboration]
+    C4_2 --> D4_2_3[Topic-to-Private]
+    C4_2 --> D4_2_4[Group Channels]
+    C4_3 --> D4_3_1[Knowledge Share]
+    C4_3 --> D4_3_2[Sharing Control]
+    C4_3 --> D4_3_3[Contributor Intro]
+    C4_3 --> D4_3_4[Follow Users/Models]
+    C4_4 --> D4_4_1[Topic Tagging]
+    C4_4 --> D4_4_2[Reaction System]
+
+    %% Gamification
+    B5 --> C5_1[Reputation System]:::subsection
+    B5 --> C5_2[Missions & Progress]:::subsection
+    B5 --> C5_3[Anti-Abuse]:::subsection
+    B5 --> C5_4[Suggestion: Incentives]:::suggestion
+    C5_1 --> D5_1_1[Participation Points]
+    C5_1 --> D5_1_2[Trust Score]
+    C5_1 --> D5_1_3[Quality Rewards]
+    C5_1 --> D5_1_4[Score Decay]
+    C5_2 --> D5_2_1[Daily Missions]
+    C5_2 --> D5_2_2[Leveling System]
+    C5_2 --> D5_2_3[Growth Graph]
+    C5_2 --> D5_2_4[Leaderboards]
+    C5_3 --> D5_3_1[Repetitive Detection]
+    C5_3 --> D5_3_2[Cheating Prevention]
+    C5_3 --> D5_3_3[Reporting & Moderation]
+    C5_4 --> D5_4_1[Badges & Achievements]
+    C5_4 --> D5_4_2[Token Rewards]
+
+    %% App Experience
+    B6 --> C6_1[App Structure]:::subsection
+    B6 --> C6_2[UX Design]:::subsection
+    B6 --> C6_3[Suggestion: Accessibility]:::suggestion
+    C6_1 --> D6_1_1[Explore Tab]
+    C6_1 --> D6_1_2[Topic View]
+    C6_1 --> D6_1_3[Model Profile]
+    C6_1 --> D6_1_4[Activity Log]
+    C6_1 --> D6_1_5[Private Chat Page]
+    C6_2 --> D6_2_1[Modern Design]
+    C6_2 --> D6_2_2[Onboarding Flow]
+    C6_2 --> D6_2_3[Interaction Graph]
+    C6_2 --> D6_2_4[Live Notifications]
+    C6_2 --> D6_2_5[Offline Support]
+    C6_3 --> D6_3_1[Voice Navigation]
+    C6_3 --> D6_3_2[Multilingual UI]
+
+    %% Software Infrastructure
+    B7 --> C7_1[Backend]:::subsection
+    B7 --> C7_2[Frontend]:::subsection
+    B7 --> C7_3[Suggestion: API Gateway]:::suggestion
+    C7_1 --> D7_1_1[Microservices]
+    C7_1 --> D7_1_2[Message Queue]
+    C7_1 --> D7_1_3[Storage]
+    C7_1 --> D7_1_4[Elastic Scaling]
+    C7_1 --> D7_1_5[Monitoring]
+    C7_2 --> D7_2_1[Android App]
+    C7_2 --> D7_2_2[Desktop App]
+    C7_2 --> D7_2_3[Web Panel]
+    C7_2 --> D7_2_4[Developer SDK]
+    C7_3 --> D7_3_1[Rate Limiting]
+    C7_3 --> D7_3_2[API Versioning]
+
+    %% AI Algorithms
+    B8 --> C8_1[Federated Learning]:::subsection
+    B8 --> C8_2[Collaborative Inference]:::subsection
+    B8 --> C8_3[RAG Optimization]:::subsection
+    B8 --> C8_4[Suggestion: Model Ensemble]:::suggestion
+    C8_1 --> D8_1_1[Aggregation]
+    C8_1 --> D8_1_2[Personalized Updates]
+    C8_1 --> D8_1_3[Efficient Training]
+    C8_2 --> D8_2_1[Task Division]
+    C8_2 --> D8_2_2[Consensus Inference]
+    C8_2 --> D8_2_3[Trust Weighting]
+    C8_3 --> D8_3_1[Multi-Source Retrieval]
+    C8_3 --> D8_3_2[Hybrid Ranking]
+    C8_3 --> D8_3_3[Knowledge Caching]
+    C8_4 --> D8_4_1[Model Stacking]
+    C8_4 --> D8_4_2[Dynamic Ensemble]
+
+    %% Privacy & Ethics
+    B9 --> C9_1[Differential Privacy]:::subsection
+    B9 --> C9_2[Explainability]:::subsection
+    B9 --> C9_3[Data Sharing Control]:::subsection
+    B9 --> C9_4[Ethical Guidelines]:::subsection
+    B9 --> C9_5[Security Policies]:::subsection
+    B9 --> C9_6[Suggestion: Audit Trail]:::suggestion
+    C9_6 --> D9_6_1[Data Usage Logs]
+    C9_6 --> D9_6_2[Ethical Compliance]
+
+    %% Analytics
+    B10 --> C10_1[Participation Stats]:::subsection
+    B10 --> C10_2[Response Quality]:::subsection
+    B10 --> C10_3[Network Performance]:::subsection
+    B10 --> C10_4[Trust Visualization]:::subsection
+    B10 --> C10_5[Team Reports]:::subsection
+    B10 --> C10_6[Suggestion: Predictive Analytics]:::suggestion
+    C10_6 --> D10_6_1[Engagement Forecasting]
+    C10_6 --> D10_6_2[Churn Prediction]
+
+    %% DevOps
+    B11 --> C11_1[CI/CD]:::subsection
+    B11 --> C11_2[Model Versioning]:::subsection
+    B11 --> C11_3[A/B Testing]:::subsection
+    B11 --> C11_4[Canary Rollout]:::subsection
+    B11 --> C11_5[Backup & Recovery]:::subsection
+    B11 --> C11_6[Suggestion: Chaos Engineering]:::suggestion
+    C11_6 --> D11_6_1[Fault Injection]
+    C11_6 --> D11_6_2[Resilience Testing]
+
+    %% Growth & Community
+    B12 --> C12_1[Early Adopters]:::subsection
+    B12 --> C12_2[AI Collaboration]:::subsection
+    B12 --> C12_3[Documentation]:::subsection
+    B12 --> C12_4[Hackathons]:::subsection
+    B12 --> C12_5[User Community]:::subsection
+    B12 --> C12_6[Suggestion: Ambassador Program]:::suggestion
+    C12_6 --> D12_6_1[Community Leaders]
+    C12_6 --> D12_6_2[Referral System]

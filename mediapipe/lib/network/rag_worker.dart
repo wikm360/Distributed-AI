@@ -146,25 +146,12 @@ class RAGWorker {
       _emitLog('🔎 Searching vector database...', WorkerLogLevel.info);
       Log.i('🔎 Searching vector database...', 'RAGWorker');
 
-      final similarChunks = await _ragManager.searchSimilar(query.query, maxResults: 5);
+      final similarChunks = await _ragManager.searchSimilar(query.query, maxResults: 2);
 
       if (similarChunks.isEmpty) {
-        _emitLog('⚠️ No relevant documents found', WorkerLogLevel.warning);
-        Log.w('No relevant documents found for query', 'RAGWorker');
-
-        // Send empty response
-        final distributedResponse = DistributedResponse(
-          queryNumber: query.queryNumber,
-          response: 'No relevant documents found in the knowledge base.',
-          metadata: {
-            'node_id': _client.nodeId ?? 'unknown',
-            'rag_worker': true,
-            'found_chunks': 0,
-            'processing_time_ms': DateTime.now().difference(startTime).inMilliseconds,
-          },
-        );
-
-        await _sendResponse(query.queryNumber, distributedResponse, startTime);
+        _emitLog('⚠️ No relevant documents found - skipping response', WorkerLogLevel.warning);
+        Log.w('No relevant documents found for query - not sending response to server', 'RAGWorker');
+        Log.i('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'RAGWorker');
         return;
       }
 
@@ -177,7 +164,7 @@ class RAGWorker {
 
       for (int i = 0; i < similarChunks.length; i++) {
         final chunk = similarChunks[i];
-        responseBuffer.writeln('--- Document ${i + 1} (Source: ${chunk.source}) ---');
+        // responseBuffer.writeln('--- Document ${i + 1} (Source: ${chunk.source}) ---');
         responseBuffer.writeln(chunk.content);
         responseBuffer.writeln();
 

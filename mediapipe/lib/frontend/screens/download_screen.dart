@@ -23,8 +23,6 @@ class _DownloadScreenState extends State<DownloadScreen>
   final _tokenController = TextEditingController();
   StreamSubscription<DownloadProgress>? _progressSub;
   AIEngine? _engine;
-  late AnimationController _animController;
-  late Animation<double> _fadeAnimation;
   late AnimationController _progressAnimController;
   late Animation<double> _progressAnimation;
   bool _needsDownload = true;
@@ -39,14 +37,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeInOut,
-    );
+    // Removed fade animation for better performance
     _progressAnimController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -55,7 +46,6 @@ class _DownloadScreenState extends State<DownloadScreen>
       parent: _progressAnimController,
       curve: Curves.easeInOut,
     );
-    _animController.forward();
     _init();
   }
 
@@ -339,50 +329,34 @@ class _DownloadScreenState extends State<DownloadScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E27),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0A0E27),
-              const Color(0xFF151B3D).withOpacity(0.6),
-              const Color(0xFF0A0E27),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(),
-              Expanded(
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildModelCard(),
-                        const SizedBox(height: 20),
-                        if (_showTokenField) ...[
-                          _buildTokenInput(),
-                          const SizedBox(height: 20),
-                        ],
-                        _buildStatusCard(),
-                        if (_progress > 0 && _downloadStatus != DownloadStatus.completed) ...[
-                          const SizedBox(height: 20),
-                          _buildProgressSection(),
-                        ],
-                        const SizedBox(height: 24),
-                        _buildActions(),
-                      ],
-                    ),
-                  ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildAppBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildModelCard(),
+                    const SizedBox(height: 20),
+                    if (_showTokenField) ...[
+                      _buildTokenInput(),
+                      const SizedBox(height: 20),
+                    ],
+                    _buildStatusCard(),
+                    if (_progress > 0 && _downloadStatus != DownloadStatus.completed) ...[
+                      const SizedBox(height: 20),
+                      _buildProgressSection(),
+                    ],
+                    const SizedBox(height: 24),
+                    _buildActions(),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -448,32 +422,27 @@ class _DownloadScreenState extends State<DownloadScreen>
   }
 
   Widget _buildModelCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.08),
-              Colors.white.withOpacity(0.03),
+    return RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            // Replaced gradient with solid color for better performance
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 12, // Reduced blur
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.1),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -576,6 +545,7 @@ class _DownloadScreenState extends State<DownloadScreen>
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -650,25 +620,17 @@ class _DownloadScreenState extends State<DownloadScreen>
   }
 
   Widget _buildTokenInput() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.orange.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.orange.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -730,9 +692,6 @@ class _DownloadScreenState extends State<DownloadScreen>
                 ],
               ),
             ),
-          ),
-        );
-      },
     );
   }
 
@@ -740,21 +699,18 @@ class _DownloadScreenState extends State<DownloadScreen>
     final statusColor = _getStatusColor();
     final statusIcon = _getStatusIcon();
     
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            statusColor.withOpacity(0.1),
-            statusColor.withOpacity(0.05),
-          ],
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          // Replaced gradient with solid color
+          color: statusColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: statusColor.withOpacity(0.3),
+            width: 1,
+          ),
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: statusColor.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
       child: Row(
         children: [
           Container(
@@ -783,20 +739,22 @@ class _DownloadScreenState extends State<DownloadScreen>
           ),
         ],
       ),
+    ),
     );
   }
 
   Widget _buildProgressSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.05),
-          width: 1,
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.05),
+            width: 1,
+          ),
         ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -871,6 +829,7 @@ class _DownloadScreenState extends State<DownloadScreen>
           ],
         ],
       ),
+    ),
     );
   }
 

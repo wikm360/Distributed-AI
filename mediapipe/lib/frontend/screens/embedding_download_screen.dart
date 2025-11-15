@@ -1,9 +1,11 @@
 // frontend/screens/embedding_download_screen.dart - Modern download screen for embedding models
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma/mobile/flutter_gemma_mobile.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../shared/models.dart' as models;
 import '../../download/model_store.dart';
 import '../../shared/logger.dart';
@@ -146,26 +148,63 @@ class _EmbeddingDownloadScreenState extends State<EmbeddingDownloadScreen>
     }
   }
 
-  void _onDownloadCompleted() {
+  void _onDownloadCompleted() async {
     if (!mounted) return;
 
     setState(() {
-      _downloadCompleted = true;
-      _isDownloading = false;
-      _needsDownload = false;
-      _status = 'Download completed!';
+      _status = 'Moving files to protected directory...';
       _progress = 100.0;
     });
 
-    HapticFeedback.heavyImpact();
-    _showSnackbar('Model downloaded successfully!', Colors.green);
-    Log.s('Embedding model download completed', 'EmbeddingDownload');
+    try {
+      // Move embedding files to separate directory to avoid flutter_gemma cleanup
+      await _moveEmbeddingFiles();
 
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-    });
+      setState(() {
+        _downloadCompleted = true;
+        _isDownloading = false;
+        _needsDownload = false;
+        _status = 'Download completed!';
+      });
+
+      HapticFeedback.heavyImpact();
+      _showSnackbar('Model downloaded successfully!', Colors.green);
+      Log.s('Embedding model download completed', 'EmbeddingDownload');
+
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.pop(context, true);
+        }
+      });
+    } catch (e) {
+      Log.e('Failed to move embedding files', 'EmbeddingDownload', e);
+      _onDownloadError('Failed to move files: $e');
+    }
+  }
+
+  Future<void> _moveEmbeddingFiles() async {
+    final baseDir = await getApplicationDocumentsDirectory();
+    final embeddingDir = Directory('${baseDir.path}/embeddings');
+
+    // Create embeddings directory if it doesn't exist
+    if (!embeddingDir.existsSync()) {
+      embeddingDir.createSync(recursive: true);
+      Log.i('Created embeddings directory: ${embeddingDir.path}', 'EmbeddingDownload');
+    }
+
+    // Move model file
+    final modelFile = File('${baseDir.path}/${widget.model.filename}');
+    final tokenizerFile = File('${baseDir.path}/${widget.model.tokenizerFilename}');
+
+    if (modelFile.existsSync()) {
+      await modelFile.rename('${embeddingDir.path}/${widget.model.filename}');
+      Log.i('Moved model file to: ${embeddingDir.path}/${widget.model.filename}', 'EmbeddingDownload');
+    }
+
+    if (tokenizerFile.existsSync()) {
+      await tokenizerFile.rename('${embeddingDir.path}/${widget.model.tokenizerFilename}');
+      Log.i('Moved tokenizer file to: ${embeddingDir.path}/${widget.model.tokenizerFilename}', 'EmbeddingDownload');
+    }
   }
 
   void _onDownloadError(String error) {

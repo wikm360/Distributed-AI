@@ -18,7 +18,7 @@ class RAGManager {
   bool _isInitialized = false;
 
   RAGManager(this._embeddingService)
-      : _chunker = TextChunker(chunkSize: 500, overlap: 50);
+      : _chunker = TextChunker();
 
   bool get isInitialized => _isInitialized;
   bool get isReady => _isInitialized && _embeddingService.isReady;
@@ -182,7 +182,7 @@ Future<bool> importTextFile(File file) async {
   }
 
   /// Search for similar chunks using query
-  Future<List<DocumentChunk>> searchSimilar(String query, {int maxResults = 5}) async {
+  Future<List<DocumentChunk>> searchSimilar(String query, {int maxResults = 2}) async {
     if (!isReady) {
       Log.e('RAG system not ready', 'RAGManager');
       return [];

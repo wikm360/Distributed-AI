@@ -381,17 +381,8 @@ class _BackpackScreenState extends State<BackpackScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1A1D2E),
-            const Color(0xFF2A2D3E),
-            Colors.purple.shade900.withOpacity(0.3),
-          ],
-        ),
-      ),
+      // Replaced gradient with solid color for better performance
+      color: const Color(0xFF1A1D2E),
       child: SafeArea(
         child: Column(
           children: [
@@ -546,30 +537,25 @@ class _BackpackScreenState extends State<BackpackScreen> with SingleTickerProvid
   }
 
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF2A2D3E),
-            const Color(0xFF1A1D2E),
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          // Replaced gradient with solid color
+          color: const Color(0xFF2A2D3E),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8, // Reduced blur
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         children: [
           Icon(icon, color: color, size: 28),
@@ -594,35 +580,31 @@ class _BackpackScreenState extends State<BackpackScreen> with SingleTickerProvid
           ),
         ],
       ),
+    ),
     );
   }
 
   Widget _buildImportProgress() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF2A2D3E),
-            const Color(0xFF1A1D2E),
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          // Replaced gradient with solid color
+          color: const Color(0xFF2A2D3E),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.blue.withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.withOpacity(0.15),
+              blurRadius: 8, // Reduced blur
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.blue.withOpacity(0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -660,6 +642,7 @@ class _BackpackScreenState extends State<BackpackScreen> with SingleTickerProvid
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -719,38 +702,34 @@ class _BackpackScreenState extends State<BackpackScreen> with SingleTickerProvid
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: _sources.length,
+      cacheExtent: 500, // Optimize scrolling performance
       itemBuilder: (context, index) {
         final source = _sources[index];
         final chunks = main.ragManager.getChunksBySource(source);
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: GestureDetector(
-            onTap: () => _showSourceDetails(source),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF2A2D3E),
-                    const Color(0xFF1A1D2E),
+        return RepaintBoundary(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: GestureDetector(
+              onTap: () => _showSourceDetails(source),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  // Replaced gradient with solid color
+                  color: const Color(0xFF2A2D3E),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 8, // Reduced blur
+                      offset: const Offset(0, 2),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -862,6 +841,7 @@ class _BackpackScreenState extends State<BackpackScreen> with SingleTickerProvid
               ),
             ),
           ),
+        ),
         );
       },
     );

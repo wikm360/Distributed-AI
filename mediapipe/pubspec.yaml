@@ -1,4 +1,4 @@
-name: distributed_ai_chat
+name: DAI
 description: "Distributed AI Chat"
 publish_to: 'none'
 
@@ -38,6 +38,9 @@ dependencies:
 
   # Text processing for chunking
   characters: ^1.3.0
+
+  flutter_native_splash: ^2.4.7
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:

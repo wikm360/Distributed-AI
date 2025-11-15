@@ -52,17 +52,8 @@ class _WorkerLogScreenState extends State<WorkerLogScreen> {
     final worker = ragWorker;
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1A1D2E),
-            const Color(0xFF2A2D3E),
-            Colors.blue.shade900.withOpacity(0.3),
-          ],
-        ),
-      ),
+      // Replaced gradient with solid color for better performance
+      color: const Color(0xFF1A1D2E),
       child: SafeArea(
         child: Column(
           children: [
@@ -80,18 +71,18 @@ class _WorkerLogScreenState extends State<WorkerLogScreen> {
       padding: const EdgeInsets.all(24),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade400.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.code,
-              color: Colors.blue.shade300,
-              size: 28,
-            ),
-          ),
+          // Container(
+            // padding: const EdgeInsets.all(12),
+            // decoration: BoxDecoration(
+            //   color: Colors.blue.shade400.withOpacity(0.2),
+            //   borderRadius: BorderRadius.circular(12),
+            // ),
+            // child: Icon(
+            //   Icons.code,
+            //   color: Colors.blue.shade300,
+            //   size: 28,
+            // ),
+          // ),
           const SizedBox(width: 16),
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,9 +262,12 @@ class _WorkerLogScreenState extends State<WorkerLogScreen> {
         reverse: true, // Show newest first
         padding: const EdgeInsets.all(16),
         itemCount: _logs.length,
+        cacheExtent: 500, // Optimize scrolling performance
         itemBuilder: (context, index) {
           final log = _logs[index];
-          return _buildLogItem(log);
+          return RepaintBoundary(
+            child: _buildLogItem(log),
+          );
         },
       ),
     );

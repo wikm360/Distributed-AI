@@ -25,10 +25,12 @@ class EmbeddingService {
   /// Check if embedding model files exist
   Future<models.EmbeddingModel?> getInstalledModel() async {
     final dir = await getApplicationDocumentsDirectory();
+    // Use separate embeddings directory to avoid conflict with flutter_gemma cleanup
+    final embeddingDir = Directory('${dir.path}/embeddings');
 
     for (final model in models.EmbeddingModel.values) {
-      final modelPath = '${dir.path}/${model.filename}';
-      final tokenizerPath = '${dir.path}/${model.tokenizerFilename}';
+      final modelPath = '${embeddingDir.path}/${model.filename}';
+      final tokenizerPath = '${embeddingDir.path}/${model.tokenizerFilename}';
 
       if (File(modelPath).existsSync() && File(tokenizerPath).existsSync()) {
         Log.i('Found installed embedding model: ${model.displayName}', 'EmbeddingService');
@@ -51,8 +53,10 @@ class EmbeddingService {
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final modelPath = '${dir.path}/${model.filename}';
-      final tokenizerPath = '${dir.path}/${model.tokenizerFilename}';
+      // Use separate embeddings directory to avoid conflict with flutter_gemma cleanup
+      final embeddingDir = Directory('${dir.path}/embeddings');
+      final modelPath = '${embeddingDir.path}/${model.filename}';
+      final tokenizerPath = '${embeddingDir.path}/${model.tokenizerFilename}';
 
       // Check if files exist
       if (!File(modelPath).existsSync() || !File(tokenizerPath).existsSync()) {

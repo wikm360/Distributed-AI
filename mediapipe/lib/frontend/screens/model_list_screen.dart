@@ -48,7 +48,7 @@ class _ModelListScreenState extends State<ModelListScreen> {
           _buildHomeScreen(),
           const BackpackScreen(),
           const WorkerLogScreen(),
-          SettingsScreen(key: UniqueKey()), // Force rebuild each time
+          const SettingsScreen(), // Removed UniqueKey() for better performance
         ],
       ),
       bottomNavigationBar: _buildBottomNavBar(),
@@ -59,22 +59,12 @@ class _ModelListScreenState extends State<ModelListScreen> {
     final models = AIModel.values;
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1A1D2E),
-            const Color(0xFF2A2D3E),
-            Colors.blue.shade900.withOpacity(0.3),
-          ],
-        ),
-      ),
+      // Removed gradient for better performance - use solid color instead
+      color: const Color(0xFF1A1D2E),
       child: SafeArea(
         child: Column(
           children: [
             _buildHeader(),
-            // _buildFeatureIcons(),
             const SizedBox(height: 32),
             Expanded(
               child: Column(
@@ -98,7 +88,7 @@ class _ModelListScreenState extends State<ModelListScreen> {
                           ),
                           Text(
                             'Models',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -122,22 +112,24 @@ class _ModelListScreenState extends State<ModelListScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Page indicators
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      models.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _currentPage == index ? 24 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _currentPage == index
-                              ? Colors.blue.shade400
-                              : Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(4),
+                  // Page indicators - optimized with RepaintBoundary
+                  RepaintBoundary(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        models.length,
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: _currentPage == index ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _currentPage == index
+                                ? Colors.blue.shade400
+                                : Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                     ),
@@ -158,42 +150,24 @@ class _ModelListScreenState extends State<ModelListScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Menu icon
-          Container(
-            // width: 50,
-            // height: 50,
-            // decoration: BoxDecoration(
-            //   color: const Color(0xFF2A2D3E),
-            //   borderRadius: BorderRadius.circular(15),
-            // ),
-            child:Text(
-              'Dist-AI',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                // height: 1.0,
-              ),
-            )
+          Text(
+            'DAI',
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              // height: 1.0,
+            ),
           ),
           // Shopping cart icon
           Container(
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.blue.shade600,
-                  Colors.blue.shade400,
-                ],
-              ),
+              // Simplified: solid color instead of gradient for performance
+              color: Colors.blue.shade600,
               borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              // Removed shadow for better performance
             ),
             child: IconButton(
               icon: const Icon(
@@ -210,107 +184,40 @@ class _ModelListScreenState extends State<ModelListScreen> {
     );
   }
 
-  // Widget _buildFeatureIcons() {
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(horizontal: 32),
-  //     child: Row(
-  //       mainAxisAlignment: MainAxisAlignment.start,
-  //       children: [
-  //         _buildIconButton(Icons.psychology_outlined, true),
-  //         const SizedBox(width: 16),
-  //         _buildIconButton(Icons.chat_bubble_outline, false),
-  //         const SizedBox(width: 16),
-  //         _buildIconButton(Icons.mic_none, false),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildIconButton(IconData icon, bool isSelected) {
-  //   return Container(
-  //     width: 56,
-  //     height: 56,
-  //     decoration: BoxDecoration(
-  //       gradient: isSelected
-  //           ? LinearGradient(
-  //               colors: [
-  //                 Colors.blue.shade600,
-  //                 Colors.blue.shade400,
-  //               ],
-  //             )
-  //           : null,
-  //       color: isSelected ? null : const Color(0xFF2A2D3E),
-  //       borderRadius: BorderRadius.circular(16),
-  //       boxShadow: isSelected
-  //           ? [
-  //               BoxShadow(
-  //                 color: Colors.blue.withOpacity(0.4),
-  //                 blurRadius: 12,
-  //                 offset: const Offset(0, 4),
-  //               ),
-  //             ]
-  //           : null,
-  //     ),
-  //     child: Icon(
-  //       icon,
-  //       color: Colors.white,
-  //       size: 28,
-  //     ),
-  //   );
-  // }
-
   Widget _buildModelCard(AIModel model, int index) {
-    bool isActive = index == _currentPage;
+    final isActive = index == _currentPage;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: isActive ? 0 : 20,
-      ),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          _navigateToDownload(model);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF2A2D3E),
-                const Color(0xFF1A1D2E),
+    return RepaintBoundary(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: isActive ? 0 : 20,
+        ),
+        child: GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _navigateToDownload(model);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              // Simplified: removed gradient for better performance
+              color: const Color(0xFF2A2D3E),
+              borderRadius: BorderRadius.circular(32),
+              // Simplified shadow - reduced blur for better performance
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: isActive ? 12 : 8,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: Stack(
-              children: [
-                // Background gradient overlay
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [
-                          Colors.blue.withOpacity(0.2),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: Stack(
+                children: [
+                  // Removed gradient overlay for better performance
                 // Content
                 Padding(
                   padding: const EdgeInsets.all(24),
@@ -321,22 +228,10 @@ class _ModelListScreenState extends State<ModelListScreen> {
                       Expanded(
                         flex: 3,
                         child: Center(
-                          child: Container(
-                            width: 180,
-                            height: 180,
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                colors: [
-                                  Colors.blue.withOpacity(0.3),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.smart_toy,
-                              size: 120,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
+                          child: Icon(
+                            Icons.smart_toy,
+                            size: 120,
+                            color: Colors.white.withOpacity(0.9),
                           ),
                         ),
                       ),
@@ -393,6 +288,7 @@ class _ModelListScreenState extends State<ModelListScreen> {
           ),
         ),
       ),
+    )
     );
   }
 
@@ -421,15 +317,9 @@ class _ModelListScreenState extends State<ModelListScreen> {
   Widget _buildBottomNavBar() {
     return Container(
       height: 80,
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2D3E),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Color(0xFF2A2D3E),
+        // Removed shadow for better performance
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -444,57 +334,36 @@ class _ModelListScreenState extends State<ModelListScreen> {
   }
 
   Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedBottomIndex == index;
+    final isSelected = _selectedBottomIndex == index;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        setState(() {
-          _selectedBottomIndex = index;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: [
-                    Colors.blue.shade600,
-                    Colors.blue.shade400,
-                  ],
-                )
-              : null,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          setState(() {
+            _selectedBottomIndex = index;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200), // Reduced duration for snappier feel
+          curve: Curves.easeOut, // Faster curve
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            // Simplified: solid color instead of gradient
+            color: isSelected ? Colors.blue.shade600 : null,
+            borderRadius: BorderRadius.circular(20),
+          ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
-                size: 24,
-              ),
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+              size: 24,
             ),
             AnimatedSize(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
+              duration: const Duration(milliseconds: 200), // Reduced duration
+              curve: Curves.easeOut,
               child: isSelected
                   ? Row(
                       children: [
@@ -514,6 +383,7 @@ class _ModelListScreenState extends State<ModelListScreen> {
           ],
         ),
       ),
+    )
     );
   }
 

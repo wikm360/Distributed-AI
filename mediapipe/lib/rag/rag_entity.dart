@@ -14,7 +14,7 @@ class DocumentChunk {
 
   /// Embedding vector (must match embedding model dimension)
   /// Note: mobilebert-uncased embedding dimension is 768
-  @HnswIndex(dimensions: 768, distanceType: VectorDistanceType.cosine)
+  @HnswIndex(dimensions: 512, distanceType: VectorDistanceType.cosine , neighborsPerNode: 48 , indexingSearchCount: 200)
   @Property(type: PropertyType.floatVector)
   List<double>? embedding;
 

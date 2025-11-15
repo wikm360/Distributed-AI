@@ -1,4 +1,3 @@
-// backend/gemma_engine.dart - پیاده‌سازی Gemma با API جدید
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -47,7 +46,8 @@ class GemmaEngine implements AIEngine {
 
       Log.i('Model path: $correctedPath', 'GemmaEngine');
 
-      // Ensure the active model is set in the manager before creating the model
+      // Set model path for flutter_gemma
+      // Note: setModelPath may trigger cleanup, but we use createModel with explicit path
       final manager = _gemma.modelManager;
       await manager.setModelPath(correctedPath);
 

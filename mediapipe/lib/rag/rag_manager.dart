@@ -11,18 +11,19 @@ import '../shared/models.dart' as models;
 
 class RAGManager {
   Store? _store;
-  Box<DocumentChunk>? _box;
+  Box<DocumentChunk>? _chunkBox;
+  Box<DocumentFileEmbedding>? _fileBox;
   final EmbeddingService _embeddingService;
   final TextChunker _chunker;
 
   bool _isInitialized = false;
 
-  RAGManager(this._embeddingService)
-      : _chunker = TextChunker();
+  RAGManager(this._embeddingService) : _chunker = TextChunker();
 
   bool get isInitialized => _isInitialized;
   bool get isReady => _isInitialized && _embeddingService.isReady;
   EmbeddingService get embeddingService => _embeddingService;
+  Store? get store => _store;
 
   /// Initialize ObjectBox
   Future<bool> initialize() async {
@@ -38,13 +39,14 @@ class RAGManager {
       Log.i('Initializing ObjectBox at: ${objectboxDir.path}', 'RAGManager');
 
       _store = await openStore(directory: objectboxDir.path);
-      _box = _store!.box<DocumentChunk>();
+      _chunkBox = _store!.box<DocumentChunk>();
+      _fileBox = _store!.box<DocumentFileEmbedding>();
 
       _isInitialized = true;
       Log.s('ObjectBox initialized successfully', 'RAGManager');
 
       // Log current stats
-      final count = _box!.count();
+      final count = _chunkBox!.count();
       Log.i('Current document chunks in DB: $count', 'RAGManager');
 
       return true;
@@ -73,7 +75,8 @@ class RAGManager {
 
     final installedModel = await _embeddingService.getInstalledModel();
     if (installedModel != null) {
-      Log.i('Found installed embedding model: ${installedModel.displayName}', 'RAGManager');
+      Log.i('Found installed embedding model: ${installedModel.displayName}',
+          'RAGManager');
       return await _embeddingService.loadModel(installedModel);
     }
 
@@ -82,55 +85,63 @@ class RAGManager {
   }
 
   /// Import text file and create embeddings
-Future<bool> importTextFile(File file) async {
-  if (!isReady) {
-    Log.e('RAG system not ready', 'RAGManager');
-    return false;
-  }
-
-  try {
-    Log.i('Importing file: ${file.path}', 'RAGManager');
-
-    final content = await file.readAsString();
-    Log.i('File size: ${content.length} characters', 'RAGManager');
-
-    final chunks = _chunker.smartChunk(content);
-    Log.i('Created ${chunks.length} chunks', 'RAGManager');
-
-    if (chunks.isEmpty) {
-      Log.w('No chunks created from file', 'RAGManager');
+  Future<bool> importTextFile(File file) async {
+    if (!isReady) {
+      Log.e('RAG system not ready', 'RAGManager');
       return false;
     }
 
-    final embeddings = await _embeddingService.generateEmbeddings(chunks);
+    try {
+      Log.i('Importing file: ${file.path}', 'RAGManager');
 
-    if (embeddings == null || embeddings.length != chunks.length) {
-      Log.e('Failed to generate embeddings', 'RAGManager');
+      final content = await file.readAsString();
+      Log.i('File size: ${content.length} characters', 'RAGManager');
+
+      final chunks = _chunker.smartChunk(content);
+      Log.i('Created ${chunks.length} chunks', 'RAGManager');
+
+      if (chunks.isEmpty) {
+        Log.w('No chunks created from file', 'RAGManager');
+        return false;
+      }
+
+      final embeddings = await _embeddingService.generateEmbeddings(chunks);
+
+      if (embeddings == null || embeddings.length != chunks.length) {
+        Log.e('Failed to generate embeddings', 'RAGManager');
+        return false;
+      }
+
+      final filename = file.uri.pathSegments.last;
+      final documentChunks = <DocumentChunk>[];
+
+      for (int i = 0; i < chunks.length; i++) {
+        documentChunks.add(DocumentChunk(
+          source: filename,
+          content: chunks[i],
+          embedding: embeddings[i],
+          metadata: 'chunk_${i + 1}_of_${chunks.length}',
+        ));
+      }
+
+      _chunkBox!.putMany(documentChunks);
+      Log.s('Successfully imported ${chunks.length} chunks from $filename',
+          'RAGManager');
+
+      await _saveFileEmbedding(
+        sourceName: filename,
+        fullText: content,
+        chunkEmbeddings: embeddings,
+        chunkCount: chunks.length,
+      );
+
+      return true;
+    } catch (e, stack) {
+      Log.e('Failed to import file', 'RAGManager', e);
+      Log.e('Stack trace:', 'RAGManager', stack);
       return false;
     }
-
-    final filename = file.uri.pathSegments.last;
-    final documentChunks = <DocumentChunk>[];
-
-    for (int i = 0; i < chunks.length; i++) {
-      documentChunks.add(DocumentChunk(
-        source: filename,
-        content: chunks[i],
-        embedding: embeddings[i],
-        metadata: 'chunk_${i + 1}_of_${chunks.length}',
-      ));
-    }
-
-    _box!.putMany(documentChunks);
-    Log.s('Successfully imported ${chunks.length} chunks from $filename', 'RAGManager');
-
-    return true;
-  } catch (e, stack) {
-    Log.e('Failed to import file', 'RAGManager', e);
-    Log.e('Stack trace:', 'RAGManager', stack);
-    return false;
   }
-}
 
   /// Import plain text and create embeddings
   Future<bool> importText(String text, String sourceName) async {
@@ -171,8 +182,16 @@ Future<bool> importTextFile(File file) async {
         ));
       }
 
-      _box!.putMany(documentChunks);
-      Log.s('Successfully imported ${chunks.length} chunks from $sourceName', 'RAGManager');
+      _chunkBox!.putMany(documentChunks);
+      Log.s('Successfully imported ${chunks.length} chunks from $sourceName',
+          'RAGManager');
+
+      await _saveFileEmbedding(
+        sourceName: sourceName,
+        fullText: text,
+        chunkEmbeddings: embeddings,
+        chunkCount: chunks.length,
+      );
 
       return true;
     } catch (e) {
@@ -182,7 +201,8 @@ Future<bool> importTextFile(File file) async {
   }
 
   /// Search for similar chunks using query
-  Future<List<DocumentChunk>> searchSimilar(String query, {int maxResults = 2}) async {
+  Future<List<DocumentChunk>> searchSimilar(String query,
+      {int maxResults = 2}) async {
     if (!isReady) {
       Log.e('RAG system not ready', 'RAGManager');
       return [];
@@ -190,7 +210,7 @@ Future<bool> importTextFile(File file) async {
 
     try {
       // Debug: Check total chunks in database
-      final totalChunks = _box!.count();
+      final totalChunks = _chunkBox!.count();
       Log.i('Total chunks in database: $totalChunks', 'RAGManager');
 
       if (totalChunks == 0) {
@@ -199,7 +219,7 @@ Future<bool> importTextFile(File file) async {
       }
 
       // Debug: Check if embeddings are valid
-      final allChunks = _box!.getAll();
+      final allChunks = _chunkBox!.getAll();
       int validEmbeddings = 0;
       int nullEmbeddings = 0;
       int emptyEmbeddings = 0;
@@ -212,12 +232,15 @@ Future<bool> importTextFile(File file) async {
         } else {
           validEmbeddings++;
           if (validEmbeddings == 1) {
-            Log.i('First chunk embedding dimension: ${chunk.embedding!.length}', 'RAGManager');
+            Log.i('First chunk embedding dimension: ${chunk.embedding!.length}',
+                'RAGManager');
           }
         }
       }
 
-      Log.i('Embeddings: valid=$validEmbeddings, null=$nullEmbeddings, empty=$emptyEmbeddings', 'RAGManager');
+      Log.i(
+          'Embeddings: valid=$validEmbeddings, null=$nullEmbeddings, empty=$emptyEmbeddings',
+          'RAGManager');
 
       // Generate embedding for query
       final queryEmbedding = await _embeddingService.generateEmbedding(query);
@@ -227,14 +250,20 @@ Future<bool> importTextFile(File file) async {
         return [];
       }
 
-      Log.i('Query embedding dimension: ${queryEmbedding.length}', 'RAGManager');
-      Log.i('Searching for similar chunks (query: "${query.substring(0, query.length > 50 ? 50 : query.length)}...")', 'RAGManager');
+      Log.i(
+          'Query embedding dimension: ${queryEmbedding.length}', 'RAGManager');
+      Log.i(
+          'Searching for similar chunks (query: "${query.substring(0, query.length > 50 ? 50 : query.length)}...")',
+          'RAGManager');
 
       // Vector search using ObjectBox HNSW
       // Note: nearestNeighborsF32 expects List<double> and converts internally
-      final queryBuilder = _box!.query(
-        DocumentChunk_.embedding.nearestNeighborsF32(queryEmbedding, maxResults),
-      ).build();
+      final queryBuilder = _chunkBox!
+          .query(
+            DocumentChunk_.embedding
+                .nearestNeighborsF32(queryEmbedding, maxResults),
+          )
+          .build();
 
       final results = queryBuilder.findWithScores();
       queryBuilder.close();
@@ -244,7 +273,9 @@ Future<bool> importTextFile(File file) async {
       // Log results with scores
       for (int i = 0; i < results.length; i++) {
         final result = results[i];
-        Log.i('  Result ${i + 1}: score=${result.score.toStringAsFixed(4)}, source=${result.object.source}', 'RAGManager');
+        Log.i(
+            '  Result ${i + 1}: score=${result.score.toStringAsFixed(4)}, source=${result.object.source}',
+            'RAGManager');
       }
 
       return results.map((r) => r.object).toList();
@@ -255,13 +286,54 @@ Future<bool> importTextFile(File file) async {
     }
   }
 
+  Future<List<DocumentFileEmbedding>> searchSimilarFiles(String query,
+      {int maxResults = 3}) async {
+    if (!isReady) {
+      Log.e('RAG system not ready', 'RAGManager');
+      return [];
+    }
+    if (_fileBox == null || _fileBox!.isEmpty()) {
+      Log.w('No file embeddings in database', 'RAGManager');
+      return [];
+    }
+
+    try {
+      final queryEmbedding = await _embeddingService.generateEmbedding(query);
+      if (queryEmbedding == null) {
+        Log.e('Failed to generate query embedding (file search)', 'RAGManager');
+        return [];
+      }
+
+      final queryBuilder = _fileBox!
+          .query(
+            DocumentFileEmbedding_.embedding
+                .nearestNeighborsF32(queryEmbedding, maxResults),
+          )
+          .build();
+
+      final results = queryBuilder.findWithScores();
+      queryBuilder.close();
+
+      Log.i('Found ${results.length} similar files', 'RAGManager');
+      return results.map((r) => r.object).toList();
+    } catch (e, stack) {
+      Log.e('Failed to search similar files', 'RAGManager', e);
+      Log.e('Stack trace:', 'RAGManager', stack);
+      return [];
+    }
+  }
+
   /// Get all document sources
   List<String> getAllSources() {
     if (!_isInitialized) return [];
 
     try {
-      final chunks = _box!.getAll();
-      final sources = chunks.map((c) => c.source ?? '').where((s) => s.isNotEmpty).toSet().toList();
+      final chunks = _chunkBox!.getAll();
+      final sources = chunks
+          .map((c) => c.source ?? '')
+          .where((s) => s.isNotEmpty)
+          .toSet()
+          .toList();
       return sources;
     } catch (e) {
       Log.e('Failed to get sources', 'RAGManager', e);
@@ -274,7 +346,8 @@ Future<bool> importTextFile(File file) async {
     if (!_isInitialized) return [];
 
     try {
-      final query = _box!.query(DocumentChunk_.source.equals(source)).build();
+      final query =
+          _chunkBox!.query(DocumentChunk_.source.equals(source)).build();
       final results = query.find();
       query.close();
       return results;
@@ -291,8 +364,21 @@ Future<bool> importTextFile(File file) async {
     try {
       final chunks = getChunksBySource(source);
       final ids = chunks.map((c) => c.id).toList();
-      _box!.removeMany(ids);
+      _chunkBox!.removeMany(ids);
       Log.s('Deleted ${ids.length} chunks from source: $source', 'RAGManager');
+
+      final fileQuery =
+          _fileBox?.query(DocumentFileEmbedding_.source.equals(source)).build();
+      if (fileQuery != null) {
+        final fileRecords = fileQuery.find();
+        fileQuery.close();
+        if (fileRecords.isNotEmpty) {
+          _fileBox!.removeMany(fileRecords.map((e) => e.id).toList());
+          Log.s(
+              'Deleted ${fileRecords.length} file embedding records for $source',
+              'RAGManager');
+        }
+      }
       return true;
     } catch (e) {
       Log.e('Failed to delete chunks', 'RAGManager', e);
@@ -303,7 +389,7 @@ Future<bool> importTextFile(File file) async {
   /// Get total chunk count
   int getTotalChunkCount() {
     if (!_isInitialized) return 0;
-    return _box!.count();
+    return _chunkBox!.count();
   }
 
   /// Clear all chunks
@@ -311,13 +397,72 @@ Future<bool> importTextFile(File file) async {
     if (!_isInitialized) return false;
 
     try {
-      _box!.removeAll();
+      _chunkBox!.removeAll();
+      _fileBox?.removeAll();
       Log.s('Cleared all document chunks', 'RAGManager');
       return true;
     } catch (e) {
       Log.e('Failed to clear chunks', 'RAGManager', e);
       return false;
     }
+  }
+
+  Future<void> _saveFileEmbedding({
+    required String sourceName,
+    required String fullText,
+    required List<List<double>> chunkEmbeddings,
+    required int chunkCount,
+  }) async {
+    if (_fileBox == null) {
+      Log.w('File embedding box not initialized', 'RAGManager');
+      return;
+    }
+
+    List<double>? embedding =
+        await _embeddingService.generateEmbedding(fullText);
+    embedding ??= _averageEmbedding(chunkEmbeddings);
+
+    if (embedding == null) {
+      Log.e('Failed to compute file embedding for $sourceName', 'RAGManager');
+      return;
+    }
+
+    final record = DocumentFileEmbedding(
+      source: sourceName,
+      embedding: embedding,
+      chunkCount: chunkCount,
+      tokenCount: fullText.length,
+    );
+
+    _fileBox!.put(
+      record,
+      mode: PutMode.put,
+    );
+    Log.s('Stored file-level embedding for $sourceName', 'RAGManager');
+  }
+
+  List<double>? _averageEmbedding(List<List<double>> vectors) {
+    if (vectors.isEmpty) return null;
+    final dimension = vectors.first.length;
+    if (dimension == 0) return null;
+
+    final sums = List<double>.filled(dimension, 0.0);
+    for (final vector in vectors) {
+      if (vector.length != dimension) {
+        Log.e(
+            'Inconsistent embedding dimensions during averaging', 'RAGManager');
+        return null;
+      }
+      for (int i = 0; i < dimension; i++) {
+        sums[i] += vector[i];
+      }
+    }
+
+    final count = vectors.length.toDouble();
+    for (int i = 0; i < dimension; i++) {
+      sums[i] /= count;
+    }
+    return sums;
   }
 
   /// Dispose resources
@@ -327,7 +472,8 @@ Future<bool> importTextFile(File file) async {
     if (_store != null) {
       _store!.close();
       _store = null;
-      _box = null;
+      _chunkBox = null;
+      _fileBox = null;
     }
 
     _isInitialized = false;

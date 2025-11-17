@@ -49,7 +49,12 @@ final _entities = <obx_int.ModelEntity>[
         type: 28,
         flags: 8,
         indexId: const obx_int.IdUid(1, 184306280175778289),
-        hnswParams: obx_int.ModelHnswParams(dimensions: 768, distanceType: 2),
+        hnswParams: obx_int.ModelHnswParams(
+          dimensions: 512,
+          neighborsPerNode: 48,
+          indexingSearchCount: 200,
+          distanceType: 2,
+        ),
       ),
       obx_int.ModelProperty(
         id: const obx_int.IdUid(5, 6805511288460611945),
@@ -60,6 +65,176 @@ final _entities = <obx_int.ModelEntity>[
       obx_int.ModelProperty(
         id: const obx_int.IdUid(6, 3717673101144106943),
         name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(2, 8629401220560681966),
+    name: 'DocumentFileEmbedding',
+    lastPropertyId: const obx_int.IdUid(6, 6987672004228671338),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 1743890224611265417),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 4359536076885816451),
+        name: 'source',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(2, 4425967497794042475),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 8766010661792203000),
+        name: 'chunkCount',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 4604157851940469759),
+        name: 'tokenCount',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 2263609561686729551),
+        name: 'embedding',
+        type: 28,
+        flags: 8,
+        indexId: const obx_int.IdUid(3, 1429945027974505347),
+        hnswParams: obx_int.ModelHnswParams(
+          dimensions: 512,
+          neighborsPerNode: 48,
+          indexingSearchCount: 200,
+          distanceType: 2,
+        ),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 6987672004228671338),
+        name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(3, 7303303674370127973),
+    name: 'UserFile',
+    lastPropertyId: const obx_int.IdUid(9, 8781002612119362682),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 7043838156266528265),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 5572397566860295601),
+        name: 'name',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 5613611554017517428),
+        name: 'filePath',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 790762372421040815),
+        name: 'folderId',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 8809693777598862011),
+        name: 'fileSize',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 8686199026493418364),
+        name: 'mimeType',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 8558979666571286156),
+        name: 'extension',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(8, 4198649759495414677),
+        name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(9, 8781002612119362682),
+        name: 'updatedAt',
+        type: 10,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(4, 4199557114336185247),
+    name: 'UserFolder',
+    lastPropertyId: const obx_int.IdUid(7, 76883095142033465),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 930727322015201572),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 8374718897112642389),
+        name: 'name',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 9148470221699389328),
+        name: 'parentId',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 7993884328199724128),
+        name: 'color',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 6759909962422325295),
+        name: 'iconName',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(6, 6295759756429700613),
+        name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 76883095142033465),
+        name: 'updatedAt',
         type: 10,
         flags: 0,
       ),
@@ -107,8 +282,8 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(1, 1112422266954378941),
-    lastIndexId: const obx_int.IdUid(1, 184306280175778289),
+    lastEntityId: const obx_int.IdUid(4, 4199557114336185247),
+    lastIndexId: const obx_int.IdUid(3, 1429945027974505347),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
@@ -187,6 +362,203 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    DocumentFileEmbedding: obx_int.EntityDefinition<DocumentFileEmbedding>(
+      model: _entities[1],
+      toOneRelations: (DocumentFileEmbedding object) => [],
+      toManyRelations: (DocumentFileEmbedding object) => {},
+      getId: (DocumentFileEmbedding object) => object.id,
+      setId: (DocumentFileEmbedding object, int id) {
+        object.id = id;
+      },
+      objectToFB: (DocumentFileEmbedding object, fb.Builder fbb) {
+        final sourceOffset = fbb.writeString(object.source);
+        final embeddingOffset = fbb.writeListFloat32(object.embedding);
+        fbb.startTable(7);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, sourceOffset);
+        fbb.addInt64(2, object.chunkCount);
+        fbb.addInt64(3, object.tokenCount);
+        fbb.addOffset(4, embeddingOffset);
+        fbb.addInt64(5, object.createdAt.millisecondsSinceEpoch);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final sourceParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final embeddingParam = const fb.ListReader<double>(
+          fb.Float32Reader(),
+          lazy: false,
+        ).vTableGet(buffer, rootOffset, 12, []);
+        final chunkCountParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          8,
+          0,
+        );
+        final tokenCountParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
+        final createdAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 14, 0),
+        );
+        final object = DocumentFileEmbedding(
+          source: sourceParam,
+          embedding: embeddingParam,
+          chunkCount: chunkCountParam,
+          tokenCount: tokenCountParam,
+          createdAt: createdAtParam,
+        )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+
+        return object;
+      },
+    ),
+    UserFile: obx_int.EntityDefinition<UserFile>(
+      model: _entities[2],
+      toOneRelations: (UserFile object) => [],
+      toManyRelations: (UserFile object) => {},
+      getId: (UserFile object) => object.id,
+      setId: (UserFile object, int id) {
+        object.id = id;
+      },
+      objectToFB: (UserFile object, fb.Builder fbb) {
+        final nameOffset = fbb.writeString(object.name);
+        final filePathOffset = fbb.writeString(object.filePath);
+        final mimeTypeOffset = object.mimeType == null
+            ? null
+            : fbb.writeString(object.mimeType!);
+        final extensionOffset = object.extension == null
+            ? null
+            : fbb.writeString(object.extension!);
+        fbb.startTable(10);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, nameOffset);
+        fbb.addOffset(2, filePathOffset);
+        fbb.addInt64(3, object.folderId);
+        fbb.addInt64(4, object.fileSize);
+        fbb.addOffset(5, mimeTypeOffset);
+        fbb.addOffset(6, extensionOffset);
+        fbb.addInt64(7, object.createdAt.millisecondsSinceEpoch);
+        fbb.addInt64(8, object.updatedAt.millisecondsSinceEpoch);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final nameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final filePathParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final folderIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
+        final fileSizeParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          12,
+          0,
+        );
+        final mimeTypeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 14);
+        final extensionParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 16);
+        final createdAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 18, 0),
+        );
+        final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 20, 0),
+        );
+        final object = UserFile(
+          name: nameParam,
+          filePath: filePathParam,
+          folderId: folderIdParam,
+          fileSize: fileSizeParam,
+          mimeType: mimeTypeParam,
+          extension: extensionParam,
+          createdAt: createdAtParam,
+          updatedAt: updatedAtParam,
+        )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+
+        return object;
+      },
+    ),
+    UserFolder: obx_int.EntityDefinition<UserFolder>(
+      model: _entities[3],
+      toOneRelations: (UserFolder object) => [],
+      toManyRelations: (UserFolder object) => {},
+      getId: (UserFolder object) => object.id,
+      setId: (UserFolder object, int id) {
+        object.id = id;
+      },
+      objectToFB: (UserFolder object, fb.Builder fbb) {
+        final nameOffset = fbb.writeString(object.name);
+        final colorOffset = object.color == null
+            ? null
+            : fbb.writeString(object.color!);
+        final iconNameOffset = object.iconName == null
+            ? null
+            : fbb.writeString(object.iconName!);
+        fbb.startTable(8);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, nameOffset);
+        fbb.addInt64(2, object.parentId);
+        fbb.addOffset(3, colorOffset);
+        fbb.addOffset(4, iconNameOffset);
+        fbb.addInt64(5, object.createdAt.millisecondsSinceEpoch);
+        fbb.addInt64(6, object.updatedAt.millisecondsSinceEpoch);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final nameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final parentIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          8,
+          0,
+        );
+        final colorParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 10);
+        final iconNameParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGetNullable(buffer, rootOffset, 12);
+        final createdAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 14, 0),
+        );
+        final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0),
+        );
+        final object = UserFolder(
+          name: nameParam,
+          parentId: parentIdParam,
+          color: colorParam,
+          iconName: iconNameParam,
+          createdAt: createdAtParam,
+          updatedAt: updatedAtParam,
+        )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -222,5 +594,124 @@ class DocumentChunk_ {
   /// See [DocumentChunk.createdAt].
   static final createdAt = obx.QueryDateProperty<DocumentChunk>(
     _entities[0].properties[5],
+  );
+}
+
+/// [DocumentFileEmbedding] entity fields to define ObjectBox queries.
+class DocumentFileEmbedding_ {
+  /// See [DocumentFileEmbedding.id].
+  static final id = obx.QueryIntegerProperty<DocumentFileEmbedding>(
+    _entities[1].properties[0],
+  );
+
+  /// See [DocumentFileEmbedding.source].
+  static final source = obx.QueryStringProperty<DocumentFileEmbedding>(
+    _entities[1].properties[1],
+  );
+
+  /// See [DocumentFileEmbedding.chunkCount].
+  static final chunkCount = obx.QueryIntegerProperty<DocumentFileEmbedding>(
+    _entities[1].properties[2],
+  );
+
+  /// See [DocumentFileEmbedding.tokenCount].
+  static final tokenCount = obx.QueryIntegerProperty<DocumentFileEmbedding>(
+    _entities[1].properties[3],
+  );
+
+  /// See [DocumentFileEmbedding.embedding].
+  static final embedding = obx.QueryHnswProperty<DocumentFileEmbedding>(
+    _entities[1].properties[4],
+  );
+
+  /// See [DocumentFileEmbedding.createdAt].
+  static final createdAt = obx.QueryDateProperty<DocumentFileEmbedding>(
+    _entities[1].properties[5],
+  );
+}
+
+/// [UserFile] entity fields to define ObjectBox queries.
+class UserFile_ {
+  /// See [UserFile.id].
+  static final id = obx.QueryIntegerProperty<UserFile>(
+    _entities[2].properties[0],
+  );
+
+  /// See [UserFile.name].
+  static final name = obx.QueryStringProperty<UserFile>(
+    _entities[2].properties[1],
+  );
+
+  /// See [UserFile.filePath].
+  static final filePath = obx.QueryStringProperty<UserFile>(
+    _entities[2].properties[2],
+  );
+
+  /// See [UserFile.folderId].
+  static final folderId = obx.QueryIntegerProperty<UserFile>(
+    _entities[2].properties[3],
+  );
+
+  /// See [UserFile.fileSize].
+  static final fileSize = obx.QueryIntegerProperty<UserFile>(
+    _entities[2].properties[4],
+  );
+
+  /// See [UserFile.mimeType].
+  static final mimeType = obx.QueryStringProperty<UserFile>(
+    _entities[2].properties[5],
+  );
+
+  /// See [UserFile.extension].
+  static final extension = obx.QueryStringProperty<UserFile>(
+    _entities[2].properties[6],
+  );
+
+  /// See [UserFile.createdAt].
+  static final createdAt = obx.QueryDateProperty<UserFile>(
+    _entities[2].properties[7],
+  );
+
+  /// See [UserFile.updatedAt].
+  static final updatedAt = obx.QueryDateProperty<UserFile>(
+    _entities[2].properties[8],
+  );
+}
+
+/// [UserFolder] entity fields to define ObjectBox queries.
+class UserFolder_ {
+  /// See [UserFolder.id].
+  static final id = obx.QueryIntegerProperty<UserFolder>(
+    _entities[3].properties[0],
+  );
+
+  /// See [UserFolder.name].
+  static final name = obx.QueryStringProperty<UserFolder>(
+    _entities[3].properties[1],
+  );
+
+  /// See [UserFolder.parentId].
+  static final parentId = obx.QueryIntegerProperty<UserFolder>(
+    _entities[3].properties[2],
+  );
+
+  /// See [UserFolder.color].
+  static final color = obx.QueryStringProperty<UserFolder>(
+    _entities[3].properties[3],
+  );
+
+  /// See [UserFolder.iconName].
+  static final iconName = obx.QueryStringProperty<UserFolder>(
+    _entities[3].properties[4],
+  );
+
+  /// See [UserFolder.createdAt].
+  static final createdAt = obx.QueryDateProperty<UserFolder>(
+    _entities[3].properties[5],
+  );
+
+  /// See [UserFolder.updatedAt].
+  static final updatedAt = obx.QueryDateProperty<UserFolder>(
+    _entities[3].properties[6],
   );
 }

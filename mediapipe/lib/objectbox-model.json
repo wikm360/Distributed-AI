@@ -43,10 +43,151 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "2:8629401220560681966",
+      "lastPropertyId": "6:6987672004228671338",
+      "name": "DocumentFileEmbedding",
+      "properties": [
+        {
+          "id": "1:1743890224611265417",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4359536076885816451",
+          "name": "source",
+          "indexId": "2:4425967497794042475",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:8766010661792203000",
+          "name": "chunkCount",
+          "type": 6
+        },
+        {
+          "id": "4:4604157851940469759",
+          "name": "tokenCount",
+          "type": 6
+        },
+        {
+          "id": "5:2263609561686729551",
+          "name": "embedding",
+          "indexId": "3:1429945027974505347",
+          "type": 28,
+          "flags": 8
+        },
+        {
+          "id": "6:6987672004228671338",
+          "name": "createdAt",
+          "type": 10
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:7303303674370127973",
+      "lastPropertyId": "9:8781002612119362682",
+      "name": "UserFile",
+      "properties": [
+        {
+          "id": "1:7043838156266528265",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5572397566860295601",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:5613611554017517428",
+          "name": "filePath",
+          "type": 9
+        },
+        {
+          "id": "4:790762372421040815",
+          "name": "folderId",
+          "type": 6
+        },
+        {
+          "id": "5:8809693777598862011",
+          "name": "fileSize",
+          "type": 6
+        },
+        {
+          "id": "6:8686199026493418364",
+          "name": "mimeType",
+          "type": 9
+        },
+        {
+          "id": "7:8558979666571286156",
+          "name": "extension",
+          "type": 9
+        },
+        {
+          "id": "8:4198649759495414677",
+          "name": "createdAt",
+          "type": 10
+        },
+        {
+          "id": "9:8781002612119362682",
+          "name": "updatedAt",
+          "type": 10
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:4199557114336185247",
+      "lastPropertyId": "7:76883095142033465",
+      "name": "UserFolder",
+      "properties": [
+        {
+          "id": "1:930727322015201572",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8374718897112642389",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:9148470221699389328",
+          "name": "parentId",
+          "type": 6
+        },
+        {
+          "id": "4:7993884328199724128",
+          "name": "color",
+          "type": 9
+        },
+        {
+          "id": "5:6759909962422325295",
+          "name": "iconName",
+          "type": 9
+        },
+        {
+          "id": "6:6295759756429700613",
+          "name": "createdAt",
+          "type": 10
+        },
+        {
+          "id": "7:76883095142033465",
+          "name": "updatedAt",
+          "type": 10
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "1:1112422266954378941",
-  "lastIndexId": "1:184306280175778289",
+  "lastEntityId": "4:4199557114336185247",
+  "lastIndexId": "3:1429945027974505347",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

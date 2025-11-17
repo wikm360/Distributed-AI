@@ -6,6 +6,8 @@ import 'download_screen.dart';
 import 'settings_screen.dart';
 import 'backpack_screen.dart';
 import 'worker_log_screen.dart';
+import 'labs_screen.dart';
+import '../widgets/animated_bottom_navbar.dart';
 
 class ModelListScreen extends StatefulWidget {
   const ModelListScreen({super.key});
@@ -41,17 +43,35 @@ class _ModelListScreenState extends State<ModelListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1D2E),
-      body: IndexedStack(
-        index: _selectedBottomIndex,
+      backgroundColor: const Color(0xFF0F0F0F),
+      extendBody: true,
+      body: Stack(
         children: [
-          _buildHomeScreen(),
-          const BackpackScreen(),
-          const WorkerLogScreen(),
-          const SettingsScreen(), // Removed UniqueKey() for better performance
+          IndexedStack(
+            index: _selectedBottomIndex,
+            children: [
+              const LabsScreen(),
+              _buildHomeScreen(),
+              const BackpackScreen(),
+              const WorkerLogScreen(),
+              const SettingsScreen(), // Removed UniqueKey() for better performance
+            ],
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AnimatedBottomNavBar(
+              selectedIndex: _selectedBottomIndex,
+              onItemSelected: (index) {
+                setState(() {
+                  _selectedBottomIndex = index;
+                });
+              },
+            ),
+          ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -188,36 +208,36 @@ class _ModelListScreenState extends State<ModelListScreen> {
     final isActive = index == _currentPage;
 
     return RepaintBoundary(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: isActive ? 0 : 20,
-        ),
-        child: GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            _navigateToDownload(model);
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              // Simplified: removed gradient for better performance
-              color: const Color(0xFF2A2D3E),
-              borderRadius: BorderRadius.circular(32),
-              // Simplified shadow - reduced blur for better performance
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: isActive ? 12 : 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: Stack(
-                children: [
-                  // Removed gradient overlay for better performance
+        child: AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: isActive ? 0 : 20,
+      ),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          _navigateToDownload(model);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            // Simplified: removed gradient for better performance
+            color: const Color(0xFF2A2D3E),
+            borderRadius: BorderRadius.circular(32),
+            // Simplified shadow - reduced blur for better performance
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: isActive ? 12 : 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: Stack(
+              children: [
+                // Removed gradient overlay for better performance
                 // Content
                 Padding(
                   padding: const EdgeInsets.all(24),
@@ -288,8 +308,7 @@ class _ModelListScreenState extends State<ModelListScreen> {
           ),
         ),
       ),
-    )
-    );
+    ));
   }
 
   Widget _buildBadge(String text, Color color) {
@@ -311,79 +330,6 @@ class _ModelListScreenState extends State<ModelListScreen> {
           fontWeight: FontWeight.w600,
         ),
       ),
-    );
-  }
-
-  Widget _buildBottomNavBar() {
-    return Container(
-      height: 80,
-      decoration: const BoxDecoration(
-        color: Color(0xFF2A2D3E),
-        // Removed shadow for better performance
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(Icons.home_rounded, 'Home', 0),
-          _buildNavItem(Icons.backpack_outlined, 'Backpack', 1),
-          _buildNavItem(Icons.description_outlined, 'Log', 2),
-          _buildNavItem(Icons.settings_outlined, 'Settings', 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final isSelected = _selectedBottomIndex == index;
-
-    return RepaintBoundary(
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          setState(() {
-            _selectedBottomIndex = index;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200), // Reduced duration for snappier feel
-          curve: Curves.easeOut, // Faster curve
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          decoration: BoxDecoration(
-            // Simplified: solid color instead of gradient
-            color: isSelected ? Colors.blue.shade600 : null,
-            borderRadius: BorderRadius.circular(20),
-          ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
-              size: 24,
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200), // Reduced duration
-              curve: Curves.easeOut,
-              child: isSelected
-                  ? Row(
-                      children: [
-                        const SizedBox(width: 8),
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      ),
-    )
     );
   }
 

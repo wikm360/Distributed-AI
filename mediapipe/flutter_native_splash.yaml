@@ -1,9 +1,29 @@
 flutter_native_splash:
+  # رنگ پس‌زمینه در حالت لایت
   color: "#ffffff"
-  image: assets/logo.png
+
+  # لوگو (اندروید < 12 و iOS)
+  image: assets/logo_dark.png
+
+  # نسخه دارک مود (اندروید < 12 و iOS)
+  color_dark: "#000000"
+  image_dark: assets/logo_white.png
+
   android: true
   ios: true
+
   ios_content_mode: center
+
   android_12:
+    # پس‌زمینه اندروید 12
     color: "#ffffff"
-    image: assets/logo.png
+    color_dark: "#000000"
+
+    # مرکز-لوگو (سایز 1152×1152)
+    image: assets/logo_dark.png
+    image_dark: assets/logo_white.png
+
+    # اگر پشت لوگو دایره یا shape می‌خوای، این رو فعال کن
+    # وگرنه خالی بگذار که از خود PNG استفاده کند
+    # icon_background_color: "#ffffff"
+    # icon_background_color_dark: "#000000"

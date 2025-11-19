@@ -26,6 +26,12 @@ dependencies:
   # File operations
   file_picker: ^10.3.3
 
+  # PDF processing
+  pdfrx: ^1.3.5
+
+  # Translation
+  google_mlkit_translation: ^0.13.0
+
   # UI enhancements
   flutter_markdown: ^0.7.7+1
 
@@ -48,6 +54,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   objectbox_generator: any
   build_runner: ^2.4.0
+
+dependency_overrides:
+  http: ^1.5.0
+
 
 flutter:
   uses-material-design: true

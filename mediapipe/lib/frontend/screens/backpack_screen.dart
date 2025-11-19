@@ -5,6 +5,8 @@ import '../widgets/starfield_background.dart';
 import '../../rag/file_manager.dart';
 import '../../rag/rag_entity.dart';
 import '../../main.dart' as main;
+import 'file_graph_screen.dart';
+import 'pdf_viewer_screen.dart';
 
 class BackpackScreen extends StatefulWidget {
   const BackpackScreen({super.key});
@@ -193,9 +195,11 @@ class _BackpackScreenState extends State<BackpackScreen> {
       if (userFile != null) {
         _loadContent();
 
-        // Process file for RAG if it's a text file
+        // Process file for RAG if it's a text file or PDF
         if (_isTextFile(userFile.extension ?? '')) {
           await _processFileForRAG(file, userFile.name);
+        } else if (_isPDFFile(userFile.extension ?? '')) {
+          await _processPDFForRAG(file, userFile.name);
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -210,6 +214,10 @@ class _BackpackScreenState extends State<BackpackScreen> {
   bool _isTextFile(String extension) {
     final textExtensions = ['txt', 'md', 'json', 'xml', 'csv', 'log'];
     return textExtensions.contains(extension.toLowerCase());
+  }
+
+  bool _isPDFFile(String extension) {
+    return extension.toLowerCase() == 'pdf';
   }
 
   Future<void> _processFileForRAG(File file, String fileName) async {
@@ -262,6 +270,66 @@ class _BackpackScreenState extends State<BackpackScreen> {
           SnackBar(
             content: Text('$fileName uploaded (processing error: $e)'),
             backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _processPDFForRAG(File file, String fileName) async {
+    if (!main.ragManager.isReady) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  '$fileName uploaded (RAG not ready - no embedding model)')),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _processingStatus = 'Extracting text from PDF...';
+    });
+
+    try {
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      setState(() => _processingStatus = 'Chunking PDF content...');
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      setState(() => _processingStatus = 'Generating embeddings...');
+      final success = await main.ragManager.importPDFFile(file);
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _processingStatus = '';
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success
+                ? '$fileName uploaded and indexed for RAG'
+                : '$fileName uploaded (PDF processing failed - might be image-based)'),
+            backgroundColor: success ? Colors.green : Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _processingStatus = '';
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$fileName uploaded (PDF processing error: $e)'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -461,12 +529,12 @@ class _BackpackScreenState extends State<BackpackScreen> {
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
-        padding: const EdgeInsets.only(bottom: 80),
+        padding: const EdgeInsets.only(bottom: 40),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 20,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.9,
+          crossAxisCount: 3,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.85,
         ),
         itemCount: items.length,
         itemBuilder: (context, index) {
@@ -486,15 +554,15 @@ class _BackpackScreenState extends State<BackpackScreen> {
       onTap: () => _openFolder(folder),
       onLongPress: () => _deleteItem(folder),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFF99E6FF),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF99E6FF).withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 12),
+              color: const Color(0xFF99E6FF).withOpacity(0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -503,27 +571,27 @@ class _BackpackScreenState extends State<BackpackScreen> {
           children: [
             const Icon(
               Icons.folder,
-              size: 80,
+              size: 48,
               color: Color(0xFF111111),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
               folder.name,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Color(0xFF111111),
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               _formatDate(folder.createdAt),
               style: TextStyle(
-                color: const Color(0xFF111111).withOpacity(0.7),
-                fontSize: 11,
+                color: const Color(0xFF111111).withOpacity(0.6),
+                fontSize: 9,
               ),
             ),
           ],
@@ -533,19 +601,27 @@ class _BackpackScreenState extends State<BackpackScreen> {
   }
 
   Widget _buildFileCard(UserFile file) {
+    final isPdf = _isPDFFile(file.extension ?? '');
+
     return GestureDetector(
-      onTap: () => _showFileMoveDialog(file),
+      onTap: () {
+        if (isPdf) {
+          _showPdfFileOptions(file);
+        } else {
+          _showFileMoveDialog(file);
+        }
+      },
       onLongPress: () => _deleteItem(file),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFFFFD588),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFFD588).withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 12),
+              color: const Color(0xFFFFD588).withOpacity(0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -554,33 +630,205 @@ class _BackpackScreenState extends State<BackpackScreen> {
           children: [
             Icon(
               _getFileIcon(file.extension ?? ''),
-              size: 80,
+              size: 48,
               color: const Color(0xFF111111),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Text(
               file.name,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Color(0xFF111111),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               _fileManager.formatFileSize(file.fileSize),
               style: TextStyle(
-                color: const Color(0xFF111111).withOpacity(0.7),
-                fontSize: 11,
+                color: const Color(0xFF111111).withOpacity(0.6),
+                fontSize: 9,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _showPdfFileOptions(UserFile file) async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF121212),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'PDF File Options',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // Open PDF option
+              _buildOptionButton(
+                icon: Icons.picture_as_pdf,
+                title: 'Open PDF',
+                subtitle: 'Read the PDF file',
+                color: const Color(0xFF99E6FF),
+                onTap: () => Navigator.pop(context, 'open'),
+              ),
+              const SizedBox(height: 12),
+              // Move file option
+              _buildOptionButton(
+                icon: Icons.drive_file_move,
+                title: 'Move File',
+                subtitle: 'Move to another folder',
+                color: const Color(0xFFFFD588),
+                onTap: () => Navigator.pop(context, 'move'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (result == 'open') {
+      _openPdfFile(file);
+    } else if (result == 'move') {
+      _showFileMoveDialog(file);
+    }
+  }
+
+  Widget _buildOptionButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white54,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPdfFile(UserFile file) async {
+    final filePath = file.filePath;
+    if (filePath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File path not found')),
+      );
+      return;
+    }
+
+    final pdfFile = File(filePath);
+    if (!await pdfFile.exists()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File not found')),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfViewerScreen(
+            pdfFile: pdfFile,
+            fileName: file.name,
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _showFileMoveDialog(UserFile file) async {
@@ -853,7 +1101,41 @@ class _BackpackScreenState extends State<BackpackScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: _openFileGraphScreen,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.bubble_chart_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  void _openFileGraphScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FileGraphScreen(
+          ragManager: main.ragManager,
+        ),
       ),
     );
   }

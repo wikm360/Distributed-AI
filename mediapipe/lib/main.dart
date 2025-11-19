@@ -1,6 +1,9 @@
 // main.dart - نقطه ورود برنامه
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
+import 'frontend/screens/animated_splash_registration.dart';
 import 'frontend/screens/model_list_screen.dart';
 import 'rag/rag_manager.dart';
 import 'rag/embedding_service.dart';
@@ -50,11 +53,44 @@ void main() async {
     ragWorker = null;
   }
 
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   runApp(const AIDistributedApp());
 }
 
-class AIDistributedApp extends StatelessWidget {
+class AIDistributedApp extends StatefulWidget {
   const AIDistributedApp({super.key});
+
+  @override
+  State<AIDistributedApp> createState() => _AIDistributedAppState();
+}
+
+class _AIDistributedAppState extends State<AIDistributedApp> {
+  bool _isRegistered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // _checkRegistrationStatus();
+  }
+
+  // ignore: unused_element
+  Future<void> _checkRegistrationStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final registered = prefs.getBool('user_registered') ?? false;
+    setState(() {
+      _isRegistered = registered;
+    });
+  }
+
+  Future<void> _onRegistrationComplete() async {
+    // Save registration status
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('user_registered', true);
+
+    setState(() {
+      _isRegistered = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +117,9 @@ class AIDistributedApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const SafeArea(child: ModelListScreen()),
+      home: _isRegistered
+          ? const SafeArea(child: ModelListScreen())
+          : AnimatedSplashRegistration(onComplete: _onRegistrationComplete),
     );
   }
 }
